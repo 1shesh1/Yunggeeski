@@ -1,0 +1,17 @@
+[build]
+  # Use npm ci for a clean install; avoids pack/cache errors (e.g. 1.pack.gz / 3.pack.gz)
+  command = "npm ci && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--prefer-offline=false --no-audit --no-fund"
+  # Reduce chance of reading corrupted Git/cache files during build
+  CI = "true"
+  # Omit paths that trigger false-positive secret detection (env names, docs, schema comments only; real secrets are in Netlify env vars)
+  SECRETS_SCAN_OMIT_PATHS = "README.md, lib/env.ts, supabase/schema.sql"
+  # Bucket name is not a secret; it appears in build output when env is inlined
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_STORAGE_BUCKET"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
