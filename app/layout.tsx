@@ -8,8 +8,8 @@ import { Footer } from "@/components/Footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "YungGeeski — Data-Driven Financial Charts & Course",
-  description: "Fixed pricing. Clear scope. Professional delivery. Charts and course.",
+  title: "YungGeeski — Viral Finance Content Workflow & Custom Charts",
+  description: "Turn raw market data into viral finance content. 50 chart ideas + exact workflow — or get custom charts done for you.",
   icons: {
     icon: "/favicon.png",
   },

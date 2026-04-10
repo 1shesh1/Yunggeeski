@@ -37,7 +37,7 @@ export function CourseAccessContent({ tier }: CourseAccessContentProps) {
           <Card className="mb-8 border-secondary/50 bg-secondary/5">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground mb-4">
-                Don't have access yet? Purchase any tier on the Workflow page. You'll be redirected here with the right access.
+                Don&apos;t have access yet? Purchase any tier on the Workflow page. You&apos;ll be redirected here with the right access.
               </p>
               <Button asChild>
                 <Link href="/workflow">Go to Workflow page</Link>

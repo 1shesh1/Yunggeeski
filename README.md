@@ -19,7 +19,16 @@ Productized service website for fixed-price, scope-defined financial chart creat
    npm install
    ```
 
-2. **Environment**
+2. **Sample videos (`public/videos/*.mp4`) — Git LFS**
+
+   Those files are stored with [Git LFS](https://git-lfs.com/) (see `.gitattributes`). If they are only ~130 bytes on disk, you have **pointer files**, not real videos — the site will not be able to play them.
+
+   - Install Git LFS once: `git lfs install`
+   - Fetch the real binaries: `git lfs pull` (from the repo root)
+
+   Netlify: `GIT_LFS_ENABLED=true` is set in `netlify.toml` so production builds pull LFS objects.
+
+3. **Environment**
    - Copy `.env.example` to `.env.local` (or use the provided `.env.local` with mock mode).
    - For local run without any real keys, ensure:
      ```env
@@ -28,12 +37,12 @@ Productized service website for fixed-price, scope-defined financial chart creat
      ```
    - Leave all Stripe, Supabase, and Resend keys empty.
 
-3. **Run the dev server**
+4. **Run the dev server**
    ```bash
    npm run dev
    ```
 
-4. **Test the flow**
+5. **Test the flow**
    - Open http://localhost:3000
    - Click **Buy** on any tier, add optional add-ons, enter an email, then **Proceed to payment**
    - You’ll be redirected to `/order/success?session_id=mock_xxx`

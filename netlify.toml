@@ -6,6 +6,8 @@
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--prefer-offline=false --no-audit --no-fund"
+  # *.mp4 in public/videos are Git LFS — without this, deploys ship pointer files and videos won't play
+  GIT_LFS_ENABLED = "true"
   # Reduce chance of reading corrupted Git/cache files during build
   CI = "true"
   # Omit paths that trigger false-positive secret detection (env names, docs, schema comments only; real secrets are in Netlify env vars)

@@ -19,10 +19,42 @@ export function Footer() {
             </Link>
           </div>
 
+          {/* Workflow */}
+          <div>
+            <h3 className="font-semibold text-foreground text-sm mb-3">Workflow</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link href="/#tier1" className={linkClass}>
+                  Ideas
+                </Link>
+              </li>
+              <li>
+                <Link href="/#tier2" className={linkClass}>
+                  Ideas + System
+                </Link>
+              </li>
+              <li>
+                <Link href="/#tier3" className={linkClass}>
+                  Full Package
+                </Link>
+              </li>
+              <li>
+                <Link href="/workflow/access" className={linkClass}>
+                  Access
+                </Link>
+              </li>
+            </ul>
+          </div>
+
           {/* Charts */}
           <div>
             <h3 className="font-semibold text-foreground text-sm mb-3">Charts</h3>
             <ul className="space-y-2">
+              <li>
+                <Link href="/charts" className={linkClass}>
+                  Overview
+                </Link>
+              </li>
               <li>
                 <Link href="/checkout/basic" className={linkClass}>
                   Basic
@@ -36,33 +68,6 @@ export function Footer() {
               <li>
                 <Link href="/checkout/premium" className={linkClass}>
                   Premium
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Workflow */}
-          <div>
-            <h3 className="font-semibold text-foreground text-sm mb-3">Workflow</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/workflow#tier1" className={linkClass}>
-                  Ideas
-                </Link>
-              </li>
-              <li>
-                <Link href="/workflow#tier2" className={linkClass}>
-                  Ideas + System
-                </Link>
-              </li>
-              <li>
-                <Link href="/workflow#tier3" className={linkClass}>
-                  Full Package
-                </Link>
-              </li>
-              <li>
-                <Link href="/workflow/access" className={linkClass}>
-                  Access
                 </Link>
               </li>
             </ul>
