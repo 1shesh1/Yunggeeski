@@ -63,8 +63,8 @@ function SocialLinks({ iconClassName = "h-4 w-4" }: { iconClassName?: string }) 
 
 export function HeaderNav() {
   const pathname = usePathname();
-  const onCharts = pathname === "/" || pathname.startsWith("/checkout") || pathname.startsWith("/order");
-  const onWorkflow = pathname.startsWith("/workflow");
+  const onCharts = pathname.startsWith("/charts") || pathname.startsWith("/checkout") || pathname.startsWith("/order");
+  const onWorkflow = pathname === "/" || pathname.startsWith("/workflow");
   const onResources = pathname.startsWith("/about") || pathname.startsWith("/faq") || pathname.startsWith("/terms") || pathname.startsWith("/downloads") || pathname.startsWith("/orders");
 
   return (
@@ -75,23 +75,23 @@ export function HeaderNav() {
             href="/"
             className={cn(
               "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-              onCharts
-                ? "bg-secondary text-secondary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            )}
-          >
-            Charts
-          </Link>
-          <Link
-            href="/workflow"
-            className={cn(
-              "px-3 py-2 rounded-md text-sm font-medium transition-colors",
               onWorkflow
                 ? "bg-secondary text-secondary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
             )}
           >
             Workflow
+          </Link>
+          <Link
+            href="/charts"
+            className={cn(
+              "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+              onCharts
+                ? "bg-secondary text-secondary-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
+          >
+            Custom Charts
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

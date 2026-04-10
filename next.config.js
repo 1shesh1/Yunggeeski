@@ -11,7 +11,8 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      { source: '/course', destination: '/workflow', permanent: true },
+      { source: '/workflow', destination: '/', permanent: true },
+      { source: '/course', destination: '/', permanent: true },
       { source: '/course/access', destination: '/workflow/access', permanent: true },
     ];
   },
