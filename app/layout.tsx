@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Link from "next/link";
 import { HeaderNav } from "@/components/HeaderNav";
 import { Footer } from "@/components/Footer";
 
@@ -24,11 +23,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div className="min-h-screen flex flex-col">
-          <header className="border-b">
-            <div className="container mx-auto px-4 py-4 flex items-center w-full">
-              <Link href="/" className="font-semibold text-lg shrink-0">
-                Yung<span className="text-secondary">Geeski</span>
-              </Link>
+          <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
+            <div className="container mx-auto w-full max-w-[100vw] px-3 sm:px-4 md:px-4">
               <HeaderNav />
             </div>
           </header>
