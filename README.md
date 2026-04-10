@@ -123,7 +123,7 @@ This usually means a bad Git or npm cache on Netlify. Try in order:
 
 ## Before deploying (checklist)
 
-- Run `npm install`, then `npm test` (runs lint + build) — both should pass.
+- Run `npm install`, then `npm test` (runs lint, `tsc --noEmit`, and production build) — all should pass.
 - Ensure `.env.example` is committed; do not commit `.env` or `.env.local` with real secrets.
 - For production, set `MOCK_MODE=false` and add all required env vars in Netlify.
 

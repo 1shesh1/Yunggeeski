@@ -5,10 +5,20 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test:
+  verify:
+    name: Lint, typecheck & build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,5 +32,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint and build
-        run: npm test
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript (tsc)
+        run: npm run typecheck
+
+      - name: Next.js production build
+        run: npm run build
