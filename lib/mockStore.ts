@@ -5,6 +5,8 @@
 
 import type { TierId } from "./pricing";
 import type { AddOnId } from "./pricing";
+import type { CourseTierId } from "./course";
+import { COURSE_TIER_SALES } from "./course";
 
 export interface MockOrder {
   id: string;
@@ -94,4 +96,52 @@ export function updateMockOrder(
   Object.assign(order, updates);
   store.set(order.id, order);
   return order;
+}
+
+// --- Course purchases (MOCK_MODE) ---
+
+export interface MockCoursePurchase {
+  id: string;
+  created_at: string;
+  customer_email: string;
+  course_tier: CourseTierId;
+  stripe_session_id: string;
+  amount_total: number;
+  currency: string;
+  payment_status: string;
+}
+
+const coursePurchaseBySession = new Map<string, MockCoursePurchase>();
+
+export function createMockCoursePurchase(params: {
+  stripe_session_id: string;
+  customer_email: string;
+  course_tier: CourseTierId;
+  amount_total?: number;
+}): MockCoursePurchase {
+  const id = `mock_cp_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const row: MockCoursePurchase = {
+    id,
+    created_at: new Date().toISOString(),
+    customer_email: params.customer_email.trim().toLowerCase(),
+    course_tier: params.course_tier,
+    stripe_session_id: params.stripe_session_id,
+    amount_total: params.amount_total ?? COURSE_TIER_SALES[params.course_tier].priceCents,
+    currency: "usd",
+    payment_status: "paid",
+  };
+  coursePurchaseBySession.set(params.stripe_session_id, row);
+  return row;
+}
+
+export function getMockCoursePurchaseBySessionId(sessionId: string): MockCoursePurchase | null {
+  return coursePurchaseBySession.get(sessionId) ?? null;
+}
+
+export function getMockCoursePurchasesByEmail(email: string): MockCoursePurchase[] {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return [];
+  return Array.from(coursePurchaseBySession.values())
+    .filter((p) => p.customer_email === normalized)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, X, ArrowRight, BookOpen, BarChart2, Zap } from "lucide-react";
-import { CourseCheckoutButton } from "@/components/CourseCheckoutButton";
+import { CourseWorkflowPricingGrid } from "@/components/CourseWorkflowPricingGrid";
 import { StickyCtaBanner } from "@/components/StickyCtaBanner";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { cn } from "@/lib/utils";
@@ -365,101 +365,15 @@ export default function WorkflowPage() {
             <p className="text-sm text-muted-foreground text-center mb-2 max-w-lg mx-auto">
               Instant access after purchase. Each tier unlocks everything at and below it.
             </p>
-            <p className="text-xs text-muted-foreground text-center mb-10">
-              After purchase you&apos;ll receive a link to your{" "}
+            <p className="text-xs text-muted-foreground text-center mb-10 max-w-xl mx-auto leading-relaxed">
+              After checkout, open the{" "}
               <Link href="/workflow/access" className="text-secondary hover:underline">
                 workflow access page
               </Link>{" "}
-              to download your materials.
+              and request a sign-in link with the same email you paid with. No tier in the URL — your session
+              unlocks downloads after you verify your inbox.
             </p>
-            <div className="grid gap-5 md:grid-cols-3 items-start">
-              {COURSE_TIERS.map((tier) => (
-                <div
-                  key={tier.id}
-                  id={tier.id}
-                  className={cn(
-                    "rounded-2xl border flex flex-col overflow-hidden scroll-mt-4 transition-transform",
-                    tier.highlight
-                      ? "border-secondary bg-card ring-1 ring-secondary/30 md:scale-[1.03]"
-                      : "border-border bg-card"
-                  )}
-                >
-                  {/* Badge */}
-                  {tier.badge ? (
-                    <div className="bg-secondary text-secondary-foreground text-center text-xs font-bold py-1.5 tracking-wider uppercase">
-                      {tier.badge}
-                    </div>
-                  ) : (
-                    <div className="py-1.5" />
-                  )}
-
-                  <div className="p-5 flex flex-col flex-1">
-                    {/* Price */}
-                    <div className="mb-5">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">
-                        {tier.shortName}
-                      </p>
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        {tier.originalPrice != null && (
-                          <span className="text-base text-muted-foreground line-through">
-                            ${tier.originalPrice}
-                          </span>
-                        )}
-                        <span className="text-3xl font-bold">${tier.price}</span>
-                      </div>
-                    </div>
-
-                    {/* Feature checklist */}
-                    <ul className="space-y-2 mb-5 flex-1">
-                      {COURSE_COMPARISON.map((row, i) => {
-                        const included =
-                          tier.id === "tier1"
-                            ? row.tier1
-                            : tier.id === "tier2"
-                            ? row.tier2
-                            : row.tier3;
-                        return (
-                          <li key={i} className="flex items-center gap-2">
-                            {included ? (
-                              <Check className="h-3.5 w-3.5 shrink-0 text-secondary" aria-hidden />
-                            ) : (
-                              <X className="h-3.5 w-3.5 shrink-0 text-muted-foreground/30" aria-hidden />
-                            )}
-                            <span
-                              className={cn(
-                                "text-xs",
-                                !included && "text-muted-foreground/40"
-                              )}
-                            >
-                              {row.label}
-                            </span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    {/* Bottom */}
-                    <div className="space-y-2">
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        {tier.whoIsThisFor}
-                      </p>
-                      <p className="text-xs font-semibold text-secondary">{tier.benefit}</p>
-                      <CourseCheckoutButton
-                        tierId={tier.id}
-                        className={cn(
-                          "w-full font-bold mt-1 h-11 rounded-xl",
-                          tier.highlight
-                            ? "bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                            : ""
-                        )}
-                      >
-                        Get Instant Access
-                      </CourseCheckoutButton>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CourseWorkflowPricingGrid tiers={COURSE_TIERS} comparison={COURSE_COMPARISON} />
           </div>
         </section>
 

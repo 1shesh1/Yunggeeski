@@ -1,14 +1,16 @@
-import { CourseAccessContent } from "@/components/CourseAccessContent";
+import { CourseAccessPageWrapper } from "@/components/CourseAccessPageWrapper";
 
 export const metadata = {
   title: "Course Access — YungGeeski",
   description: "Access your course materials and downloads.",
 };
 
-export default function DownloadsPage({
+export default async function DownloadsPage({
   searchParams,
 }: {
-  searchParams: { tier?: string };
+  searchParams: { tier?: string; session_id?: string; error?: string };
 }) {
-  return <CourseAccessContent tier={searchParams.tier} />;
+  return (
+    <CourseAccessPageWrapper searchParams={searchParams} heading="Course access" />
+  );
 }

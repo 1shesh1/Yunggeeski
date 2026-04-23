@@ -31,7 +31,19 @@ export interface CourseTierAccess {
 }
 
 /** Order of tiers for unlock logic: tier1 < tier2 < tier3 */
-const TIER_ORDER: CourseTierId[] = ["tier1", "tier2", "tier3"];
+export const COURSE_TIER_ORDER: CourseTierId[] = ["tier1", "tier2", "tier3"];
+
+const TIER_ORDER = COURSE_TIER_ORDER;
+
+/** Highest tier among a list of purchases (e.g. multiple checkouts). */
+export function maxCourseTier(tiers: CourseTierId[]): CourseTierId | null {
+  if (tiers.length === 0) return null;
+  let best = tiers[0];
+  for (const t of tiers) {
+    if (TIER_ORDER.indexOf(t) > TIER_ORDER.indexOf(best)) best = t;
+  }
+  return best;
+}
 
 export function tierUnlocksSection(purchasedTier: CourseTierId, sectionTier: CourseTierId): boolean {
   const purchasedIndex = TIER_ORDER.indexOf(purchasedTier);

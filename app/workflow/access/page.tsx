@@ -1,14 +1,14 @@
-import { CourseAccessContent } from "@/components/CourseAccessContent";
+import { CourseAccessPageWrapper } from "@/components/CourseAccessPageWrapper";
 
 export const metadata = {
   title: "Workflow access — YungGeeski",
   description: "Access your workflow materials.",
 };
 
-export default function WorkflowAccessPage({
+export default async function WorkflowAccessPage({
   searchParams,
 }: {
-  searchParams: { tier?: string };
+  searchParams: { tier?: string; session_id?: string; error?: string };
 }) {
-  return <CourseAccessContent tier={searchParams.tier} />;
+  return <CourseAccessPageWrapper searchParams={searchParams} />;
 }
