@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MOCK_MODE, getStripeWebhookSecret } from "@/lib/env";
-import { getSupabase, isSupabaseAvailable } from "@/lib/supabase";
-import { sendOrderConfirmationEmail } from "@/lib/email";
+import { MOCK_MODE, getStripeWebhookSecret, getBaseUrl } from "@/lib/env";
+import { getSupabase, insertCoursePurchase, isSupabaseAvailable } from "@/lib/supabase";
+import { sendCoursePurchaseConfirmationEmail, sendOrderConfirmationEmail } from "@/lib/email";
 import { getTierById } from "@/lib/pricing";
+import { normalizeCourseEmail } from "@/lib/courseEmail";
+import { COURSE_TIER_SALES } from "@/lib/course";
+import type { CourseTierId } from "@/lib/course";
 import Stripe from "stripe";
 import type { TierId } from "@/lib/pricing";
 import type { AddOnId } from "@/lib/pricing";
+
+const COURSE_TIER_IDS: CourseTierId[] = ["tier1", "tier2", "tier3"];
 
 // Next.js doesn't parse body for webhooks by default; we need raw body for signature verification.
 // In real mode we'd use the raw body; for mock we just return 200.
@@ -45,7 +50,47 @@ export async function POST(request: NextRequest) {
     const client = getSupabase();
     if (!client) return NextResponse.json({ received: true });
 
-    const tier = (session.metadata?.tier as TierId) ?? "basic";
+    const meta = session.metadata ?? {};
+    const amountTotal = session.amount_total ?? 0;
+    const customerEmailRaw = (session.customer_details?.email ?? session.customer_email) as string | null;
+
+    if (meta.type === "course") {
+      const tierRaw = typeof meta.tier === "string" ? meta.tier.trim().toLowerCase() : "";
+      if (!COURSE_TIER_IDS.includes(tierRaw as CourseTierId)) {
+        console.error("[webhook] course checkout invalid tier", tierRaw, session.id);
+        return NextResponse.json({ received: true });
+      }
+      const courseTier = tierRaw as CourseTierId;
+      if (!customerEmailRaw?.trim()) {
+        console.error("[webhook] course checkout missing email", session.id);
+        return NextResponse.json({ received: true });
+      }
+      const normalized = normalizeCourseEmail(customerEmailRaw);
+      const inserted = await insertCoursePurchase({
+        customer_email: normalized,
+        course_tier: courseTier,
+        stripe_session_id: session.id,
+        amount_total: amountTotal,
+        currency: session.currency ?? "usd",
+        payment_status: "paid",
+      });
+      if (!inserted.ok) {
+        console.error("[webhook] course_purchases insert failed", inserted.error);
+        return NextResponse.json({ error: "Course purchase insert failed" }, { status: 500 });
+      }
+      const accessUrl = `${getBaseUrl()}/workflow/access`;
+      const tierName = COURSE_TIER_SALES[courseTier].name;
+      sendCoursePurchaseConfirmationEmail({
+        to: normalized,
+        tierName,
+        accessUrl,
+      }).then((result) => {
+        if (!result.ok) console.error("[webhook] Course confirmation email failed:", result.error);
+      });
+      return NextResponse.json({ received: true });
+    }
+
+    const tier = (meta.tier as TierId) ?? "basic";
     let addons: AddOnId[] = [];
     try {
       const parsed = session.metadata?.addons ? JSON.parse(session.metadata.addons) : [];
@@ -55,7 +100,6 @@ export async function POST(request: NextRequest) {
     }
 
     let form_data: Record<string, unknown> | null = null;
-    const meta = session.metadata ?? {};
     const chunks: string[] = [];
     let i = 0;
     while (meta[`form_data_${i}`]) {
@@ -70,8 +114,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const amountTotal = session.amount_total ?? 0;
-    const customerEmail = (session.customer_details?.email ?? session.customer_email) as string | null;
     const hasFormData = form_data && Object.keys(form_data).length > 0;
 
     // Flatten series array into series_1_* .. series_5_* columns
@@ -90,7 +132,7 @@ export async function POST(request: NextRequest) {
       addons,
       amount_total: amountTotal,
       currency: session.currency ?? "usd",
-      customer_email: customerEmail,
+      customer_email: customerEmailRaw,
       stripe_session_id: session.id,
       stripe_payment_intent: session.payment_intent as string | null,
       payment_status: "paid",
@@ -118,10 +160,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Send confirmation email to customer (non-blocking; log on failure)
-    if (customerEmail?.trim()) {
+    if (customerEmailRaw?.trim()) {
       const tierDef = getTierById(tier);
       sendOrderConfirmationEmail({
-        to: customerEmail.trim(),
+        to: customerEmailRaw.trim(),
         tierName: tierDef?.name ?? tier,
         amountTotalCents: amountTotal,
         orderStatus: hasFormData ? "in_production" : "awaiting_form",

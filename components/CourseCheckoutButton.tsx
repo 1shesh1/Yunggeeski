@@ -6,11 +6,13 @@ import type { CourseTierId } from "@/lib/course";
 
 interface CourseCheckoutButtonProps {
   tierId: CourseTierId;
+  /** Optional prefill for Stripe Checkout and mock purchase record. */
+  customerEmail?: string;
   children: React.ReactNode;
   className?: string;
 }
 
-export function CourseCheckoutButton({ tierId, children, className }: CourseCheckoutButtonProps) {
+export function CourseCheckoutButton({ tierId, customerEmail, children, className }: CourseCheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
 
   const handleClick = async () => {
@@ -19,7 +21,10 @@ export function CourseCheckoutButton({ tierId, children, className }: CourseChec
       const res = await fetch("/api/checkout/create-course-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tier: tierId }),
+        body: JSON.stringify({
+          tier: tierId,
+          ...(customerEmail?.trim() ? { customerEmail: customerEmail.trim() } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Checkout failed");

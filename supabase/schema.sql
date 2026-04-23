@@ -21,6 +21,21 @@ create table if not exists public.orders (
   delivery_csv_url text
 );
 
+-- Course purchases (workflow / digital tiers). Chart orders stay in `orders`.
+create table if not exists public.course_purchases (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now() not null,
+  customer_email text not null,
+  course_tier text not null check (course_tier in ('tier1', 'tier2', 'tier3')),
+  stripe_session_id text not null unique,
+  amount_total int not null default 0,
+  currency text default 'usd' not null,
+  payment_status text default 'paid' not null
+);
+
+create index if not exists course_purchases_customer_email_idx
+  on public.course_purchases (customer_email);
+
 -- Optional: RLS policies (enable if you use RLS)
 -- alter table public.orders enable row level security;
 -- create policy "Service role can do everything" on public.orders for all using (true);

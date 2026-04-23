@@ -93,7 +93,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/downloads" className={linkClass}>
+                <Link href="/downloads" className={linkClass} title="Sign in with your purchase email">
                   Course Access
                 </Link>
               </li>

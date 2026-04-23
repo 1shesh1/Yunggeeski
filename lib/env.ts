@@ -75,3 +75,13 @@ export function getSupabaseStorageBucket(): string {
 export function getAdminSecret(): string | undefined {
   return getStr("ADMIN_SECRET");
 }
+
+/** HS256 secret for course magic-link and session JWTs. Required in production. */
+export function getCourseAccessJwtSecret(): string {
+  const s = getStr("COURSE_ACCESS_JWT_SECRET");
+  if (s && s.length >= 32) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("COURSE_ACCESS_JWT_SECRET must be set (min 32 chars) in production");
+  }
+  return "dev-course-access-secret-change-me-32chars!!";
+}
