@@ -228,6 +228,7 @@ export interface SocialPostRow {
   is_featured: boolean;
   sort_order: number;
   fetched_at: string | null;
+  counted_over_threshold: boolean;
 }
 
 export interface MetricOverrideRow {
@@ -399,6 +400,30 @@ export async function upsertApiPost(row: {
     },
     { onConflict: "platform,external_id" },
   );
+}
+
+/** Baseline: mark every post currently over the threshold as counted, so the
+ * admin's manual count already accounts for them (called when the override is
+ * set). Prevents double-counting the existing catalog. */
+export async function markPostsCountedOverThreshold(threshold: number): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  await client.from("social_posts").update({ counted_over_threshold: true }).gte("views", threshold);
+}
+
+/** Claim posts that have crossed the threshold since the last check: flip them
+ * to counted and return how many there were. Used to increment the override. */
+export async function claimNewThresholdCrossings(threshold: number): Promise<number> {
+  const client = getSupabase();
+  if (!client) return 0;
+  const { data, error } = await client
+    .from("social_posts")
+    .update({ counted_over_threshold: true })
+    .gte("views", threshold)
+    .eq("counted_over_threshold", false)
+    .select("id");
+  if (error || !data) return 0;
+  return data.length;
 }
 
 /** Retention sweep for the append-only snapshots table. */

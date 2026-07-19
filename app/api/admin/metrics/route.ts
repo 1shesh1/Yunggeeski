@@ -5,8 +5,10 @@ import {
   getMetricOverride,
   upsertMetricOverride,
   listSocialPosts,
+  markPostsCountedOverThreshold,
   type MetricOverrideWrite,
 } from "@/lib/supabase";
+import { NOTABLE_VIEWS_THRESHOLD } from "@/lib/metrics/types";
 
 const OVERRIDE_NUMERIC_KEYS = [
   "total_followers",
@@ -55,5 +57,13 @@ export async function PATCH(request: NextRequest) {
   if (!saved) {
     return NextResponse.json({ error: "Failed to save override" }, { status: 500 });
   }
+
+  // Setting a videos-above-threshold baseline means "this count already covers
+  // every current post," so mark them counted; the cron only adds NEW crossings.
+  if (patch.videos_above_threshold != null) {
+    const threshold = patch.notable_views_threshold ?? NOTABLE_VIEWS_THRESHOLD;
+    await markPostsCountedOverThreshold(threshold);
+  }
+
   return NextResponse.json({ override: saved });
 }
