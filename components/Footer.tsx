@@ -17,6 +17,12 @@ export function Footer() {
             >
               Yung<span className="text-secondary">Geeski</span>
             </Link>
+            <Link
+              href="/brands"
+              className="mt-4 inline-flex items-center rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/20"
+            >
+              Work With Yung Geeski
+            </Link>
           </div>
 
           {/* Workflow */}
