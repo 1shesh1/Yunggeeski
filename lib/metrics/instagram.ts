@@ -1,15 +1,20 @@
 /**
- * Instagram Graph API client (IG Business/Creator account linked to a Facebook Page).
+ * Instagram client — "Instagram API with Instagram Login" (graph.instagram.com).
  *
- * ⚠ UNVERIFIED AGAINST LIVE API. The endpoints/fields below follow the documented
- * Graph API shape, but they cannot be exercised until Meta app review grants the
- * `instagram_manage_insights` / `instagram_basic` permissions and real tokens
- * exist. Treat this as the wiring to validate during the credential rollout, not
- * as battle-tested code. The refresh job wraps every call in try/catch so a wrong
- * field here can never crash the cron or blank the page (the read service falls
- * back to the last snapshot, then fixtures).
+ * This targets the Instagram-Login flavor (tokens issued by the Instagram app,
+ * used against graph.instagram.com), NOT the Facebook Graph / Page flavor
+ * (graph.facebook.com). Sending an Instagram-Login token to graph.facebook.com
+ * returns OAuthException code 190 "Cannot parse access token" — which is why we
+ * call graph.instagram.com and address the account as `me`.
  *
- * Docs: https://developers.facebook.com/docs/instagram-api
+ * ⚠ Still UNVERIFIED end-to-end without a live token: exact media-insight metric
+ * names (e.g. `views` vs `plays`) can vary by account/media type. Every insight
+ * call is best-effort and degrades to 0/null; the refresh job wraps the whole
+ * client in try/catch and the read service falls back to the last snapshot then
+ * fixtures, so a wrong field never crashes the cron or blanks the page.
+ *
+ * Requires a Business/Creator account for insights (reach, views).
+ * Docs: https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login
  */
 
 import type { InstagramApiConfig } from "@/lib/env";
@@ -21,9 +26,10 @@ import {
   type RefreshedToken,
 } from "./types";
 
-const GRAPH_BASE = "https://graph.facebook.com/v21.0";
+const API_BASE = "https://graph.instagram.com/v21.0";
+const REFRESH_URL = "https://graph.instagram.com/refresh_access_token";
 const MEDIA_LIMIT = 30;
-const REFRESH_SKEW_MS = 7 * 86_400_000; // extend when <7 days to expiry
+const REFRESH_SKEW_MS = 7 * 86_400_000; // refresh when <7 days to expiry
 
 interface IgMedia {
   id: string;
@@ -36,84 +42,37 @@ interface IgMedia {
   timestamp?: string;
 }
 
-async function graphGet<T>(path: string, params: Record<string, string>): Promise<T> {
+async function igGet<T>(path: string, params: Record<string, string>): Promise<T> {
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${GRAPH_BASE}/${path}?${qs}`, { cache: "no-store" });
+  const res = await fetch(`${API_BASE}/${path}?${qs}`, { cache: "no-store" });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`Instagram Graph ${path} ${res.status}: ${body.slice(0, 200)}`);
+    throw new Error(`Instagram ${path} ${res.status}: ${body.slice(0, 200)}`);
   }
   return (await res.json()) as T;
 }
 
-/** Sum a daily-value account insight (e.g. reach) over the last `days` days. */
-async function fetchWindowReach(
-  igId: string,
-  token: string,
-  metric: string,
-  days: number,
-): Promise<number | null> {
-  const until = Math.floor(Date.now() / 1000);
-  const since = until - days * 86_400;
-  try {
-    const data = await graphGet<{ data: { values: { value: number }[] }[] }>(`${igId}/insights`, {
-      metric,
-      period: "day",
-      since: String(since),
-      until: String(until),
-      access_token: token,
-    });
-    const values = data.data?.[0]?.values ?? [];
-    if (!values.length) return null;
-    return values.reduce((a, v) => a + (v.value ?? 0), 0);
-  } catch {
-    return null;
-  }
-}
-
-/** Best-effort per-media view + save counts (reels report `plays`). */
-async function fetchMediaViews(
-  mediaId: string,
-  token: string,
-): Promise<{ views: number; saves: number | null }> {
-  try {
-    const data = await graphGet<{ data: { name: string; values: { value: number }[] }[] }>(
-      `${mediaId}/insights`,
-      { metric: "plays,saved", access_token: token },
-    );
-    const byName = new Map(data.data?.map((d) => [d.name, d.values?.[0]?.value ?? 0]));
-    return { views: byName.get("plays") ?? 0, saves: byName.get("saved") ?? null };
-  } catch {
-    return { views: 0, saves: null };
-  }
-}
-
-export function isInstagramConfigured(config: InstagramApiConfig, token: SocialTokenRow | null): boolean {
-  return Boolean(config.businessAccountId && (token?.access_token || config.longLivedToken));
-}
-
 /**
- * Best-effort long-lived token extension via `fb_exchange_token`, when the
- * stored token is near expiry and app credentials are present. UNVERIFIED —
- * the exact refresh flow depends on the final token type (Page vs long-lived
- * user token); returns null on any failure so the caller keeps the old token.
+ * Best-effort long-lived token refresh (ig_refresh_token). Long-lived Instagram
+ * tokens last ~60 days and can be refreshed once they're >24h old. Returns null
+ * on failure so the caller keeps the existing token.
  */
 async function maybeRefreshToken(
-  config: InstagramApiConfig,
   storedToken: SocialTokenRow | null,
   currentToken: string,
 ): Promise<{ accessToken: string; refreshed: RefreshedToken } | null> {
   const nearExpiry = storedToken?.expires_at
     ? Date.parse(storedToken.expires_at) - Date.now() < REFRESH_SKEW_MS
     : false;
-  if (!nearExpiry || !config.appId || !config.appSecret) return null;
+  if (!nearExpiry) return null;
   try {
-    const data = await graphGet<{ access_token?: string; expires_in?: number }>("oauth/access_token", {
-      grant_type: "fb_exchange_token",
-      client_id: config.appId,
-      client_secret: config.appSecret,
-      fb_exchange_token: currentToken,
-    });
+    const qs = new URLSearchParams({
+      grant_type: "ig_refresh_token",
+      access_token: currentToken,
+    }).toString();
+    const res = await fetch(`${REFRESH_URL}?${qs}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { access_token?: string; expires_in?: number };
     if (!data.access_token) return null;
     const expiresAt = data.expires_in
       ? new Date(Date.now() + data.expires_in * 1000).toISOString()
@@ -127,33 +86,80 @@ async function maybeRefreshToken(
   }
 }
 
+/** Best-effort per-media view + save counts (reels report `views`). */
+async function fetchMediaViews(
+  mediaId: string,
+  token: string,
+): Promise<{ views: number; saves: number | null }> {
+  try {
+    const data = await igGet<{ data: { name: string; values: { value: number }[] }[] }>(
+      `${mediaId}/insights`,
+      { metric: "views,saved", access_token: token },
+    );
+    const byName = new Map(data.data?.map((d) => [d.name, d.values?.[0]?.value ?? 0]));
+    return { views: byName.get("views") ?? 0, saves: byName.get("saved") ?? null };
+  } catch {
+    return { views: 0, saves: null };
+  }
+}
+
+/** Sum a daily account insight (reach) over the last `days` days. */
+async function fetchWindowReach(token: string, days: number): Promise<number | null> {
+  const until = Math.floor(Date.now() / 1000);
+  const since = until - days * 86_400;
+  try {
+    const data = await igGet<{ data: { values: { value: number }[] }[] }>("me/insights", {
+      metric: "reach",
+      period: "day",
+      since: String(since),
+      until: String(until),
+      access_token: token,
+    });
+    const values = data.data?.[0]?.values ?? [];
+    if (!values.length) return null;
+    return values.reduce((a, v) => a + (v.value ?? 0), 0);
+  } catch {
+    return null;
+  }
+}
+
+export function isInstagramConfigured(_config: InstagramApiConfig, token: SocialTokenRow | null): boolean {
+  return Boolean(token?.access_token || _config.longLivedToken);
+}
+
 /**
- * Fetch account snapshot + recent posts for the configured IG account.
- * Throws if not configured or if the account call fails.
+ * Fetch account snapshot + recent posts for the authenticated IG account.
+ * Throws only if there is no usable token; API failures degrade per-call.
  */
 export async function fetchInstagramMetrics(
   config: InstagramApiConfig,
   storedToken: SocialTokenRow | null,
 ): Promise<PlatformFetchResult> {
   let token = storedToken?.access_token ?? config.longLivedToken;
-  const igId = config.businessAccountId;
-  if (!token || !igId) {
-    throw new Error("Instagram not configured (need IG_BUSINESS_ACCOUNT_ID + token)");
+  if (!token) {
+    throw new Error("Instagram not configured (need an access token)");
   }
 
   let refreshedToken: RefreshedToken | undefined;
-  const refresh = await maybeRefreshToken(config, storedToken, token);
+  const refresh = await maybeRefreshToken(storedToken, token);
   if (refresh) {
     token = refresh.accessToken;
     refreshedToken = refresh.refreshed;
   }
 
-  const account = await graphGet<{ followers_count?: number; media_count?: number }>(igId, {
-    fields: "followers_count,media_count",
+  // The Instagram-Login token is scoped to one account, so `me` resolves it —
+  // IG_BUSINESS_ACCOUNT_ID is not needed for this flavor.
+  const account = await igGet<{
+    followers_count?: number;
+    media_count?: number;
+    username?: string;
+    account_type?: string;
+  }>("me", {
+    fields: "followers_count,media_count,username,account_type",
     access_token: token,
   });
 
-  const mediaResp = await graphGet<{ data: IgMedia[] }>(`${igId}/media`, {
+  const mediaResp = await igGet<{ data: IgMedia[] }>("me/media", {
     fields: "id,permalink,media_type,thumbnail_url,media_url,like_count,comments_count,timestamp",
     limit: String(MEDIA_LIMIT),
     access_token: token,
@@ -177,8 +183,8 @@ export async function fetchInstagramMetrics(
   }
 
   const [reach30d, reach90d] = await Promise.all([
-    fetchWindowReach(igId, token, "reach", 30),
-    fetchWindowReach(igId, token, "reach", 90),
+    fetchWindowReach(token, 30),
+    fetchWindowReach(token, 90),
   ]);
 
   const videoViews = posts.map((p) => p.views);
@@ -193,7 +199,7 @@ export async function fetchInstagramMetrics(
       bestVideoViews,
       videosAboveThreshold,
       notableViewsThreshold: NOTABLE_VIEWS_THRESHOLD,
-      raw: { account, media_count: account.media_count },
+      raw: { account },
     },
     posts,
     token: refreshedToken,
