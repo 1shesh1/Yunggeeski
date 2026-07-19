@@ -60,6 +60,27 @@ const EMPTY_POST = {
 
 type PostForm = typeof EMPTY_POST;
 
+/** Small thumbnail with a graceful fallback (IG CDN URLs can expire / 404). */
+function PostThumb({ src }: { src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-muted/40 text-[10px] text-muted-foreground">
+        —
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className="h-12 w-12 shrink-0 rounded-md bg-muted object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export function MetricsPanel() {
   const [loading, setLoading] = useState(true);
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -380,8 +401,9 @@ export function MetricsPanel() {
           posts.map((p) => (
             <div
               key={p.id}
-              className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
+              className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3 py-3"
             >
+              <PostThumb src={p.thumbnail_url} />
               <label className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Checkbox checked={p.is_featured} onCheckedChange={() => toggleFeatured(p)} />
                 Featured
@@ -393,6 +415,16 @@ export function MetricsPanel() {
                   sort {p.sort_order}
                 </p>
               </div>
+              {p.permalink && (
+                <a
+                  href={p.permalink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-secondary hover:underline"
+                >
+                  View ↗
+                </a>
+              )}
               <Button variant="ghost" size="sm" onClick={() => editPost(p)}>
                 Edit
               </Button>
