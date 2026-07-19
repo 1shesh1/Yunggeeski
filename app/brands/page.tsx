@@ -2,17 +2,11 @@ import { existsSync } from "fs";
 import path from "path";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  ArrowRight,
-  Check,
-  Download,
-  Mail,
-  Quote,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Check, Download, Quote, Sparkles } from "lucide-react";
 import { StickyCtaBanner } from "@/components/StickyCtaBanner";
 import { PortfolioCard } from "./PortfolioCard";
 import { BrandHeroMontage } from "./BrandHeroMontage";
+import { BrandInquiryForm } from "./BrandInquiryForm";
 import { getAccountMetrics, getFeaturedPortfolio } from "@/lib/metrics/service";
 import {
   SPONSOR_PACKAGES,
@@ -21,7 +15,6 @@ import {
   DISCLOSURE_STATEMENT,
   DELTA_OPTIONS_CASE_STUDY,
 } from "@/lib/sponsorship";
-import { PARTNERSHIPS_EMAIL } from "@/lib/site";
 import { formatCompact } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -331,8 +324,6 @@ export default async function BrandsPage() {
         </section>
 
         {/* ── INQUIRY ── */}
-        {/* TODO(#5): replace the interim contact card below with the BrandInquiryForm
-            (qualified fields, budget dropdown, POST /api/brands/inquiry, /brands/thanks). */}
         <section id="inquiry" className="scroll-mt-4 px-4 py-20">
           <div className="container mx-auto max-w-2xl">
             <p className={eyebrow}>Request a Campaign</p>
@@ -340,24 +331,10 @@ export default async function BrandsPage() {
               Tell us about your campaign
             </h2>
             <p className="mx-auto mb-8 max-w-lg text-center text-sm text-muted-foreground">
-              Requests are reviewed based on brand fit, audience relevance, budget, and production
-              availability.
+              The more specific you are, the faster we can tell you whether it&apos;s a fit.
             </p>
-            <div className="rounded-2xl border border-border bg-card p-6 text-center sm:p-8">
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                The full campaign inquiry form is on its way. In the meantime, reach out directly and
-                include your company, product, budget range, and desired launch date.
-              </p>
-              <a
-                href={`mailto:${PARTNERSHIPS_EMAIL}?subject=${encodeURIComponent(
-                  "Campaign inquiry — Yung Geeski",
-                )}`}
-                className={`${primaryCta} mt-6`}
-              >
-                <Mail className="h-4 w-4" />
-                Email the partnerships team
-              </a>
-              <p className="mt-4 text-xs text-muted-foreground">{PARTNERSHIPS_EMAIL}</p>
+            <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+              <BrandInquiryForm />
             </div>
           </div>
         </section>

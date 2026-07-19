@@ -150,6 +150,34 @@ export async function getCoursePurchasesByEmail(normalizedEmail: string): Promis
   return (data ?? []) as CoursePurchaseRow[];
 }
 
+export interface BrandInquiryInsert {
+  name: string;
+  company: string;
+  work_email: string;
+  company_website: string;
+  product_or_service: string;
+  campaign_objective: string;
+  budget: string;
+  launch_date: string;
+  deliverables: string;
+  paid_ads_required: boolean;
+  category_exclusivity_required: boolean;
+  additional_info?: string | null;
+}
+
+export async function insertBrandInquiry(
+  row: BrandInquiryInsert,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const client = getSupabase();
+  if (!client) return { ok: false, error: "Supabase not configured" };
+  const { error } = await client.from("brand_inquiries").insert({
+    ...row,
+    additional_info: row.additional_info ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
 export async function uploadLogo(orderId: string, file: Buffer, mimeType: string): Promise<string | null> {
   const client = getSupabase();
   if (!client) return null;

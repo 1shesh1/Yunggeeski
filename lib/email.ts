@@ -5,6 +5,8 @@
 
 import { Resend } from "resend";
 import { getResendApiKey, getResendFromEmail, getBaseUrl } from "./env";
+import { PARTNERSHIPS_EMAIL } from "./site";
+import { budgetLabel } from "./schemas";
 
 export interface OrderConfirmationPayload {
   /** Customer email address */
@@ -172,6 +174,99 @@ export async function sendCourseAccessMagicLinkEmail(params: {
     return { ok: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message };
+  }
+}
+
+export interface BrandInquiryPayload {
+  name: string;
+  company: string;
+  workEmail: string;
+  companyWebsite: string;
+  productOrService: string;
+  campaignObjective: string;
+  budget: string;
+  launchDate: string;
+  deliverables: string;
+  paidAdsRequired: boolean;
+  categoryExclusivityRequired: boolean;
+  additionalInfo?: string | null;
+}
+
+/** Escape user-supplied text before interpolating into the notification HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Notify the partnerships inbox of a new brand campaign inquiry.
+ * Sends to PARTNERSHIPS_EMAIL with the applicant's work email as reply-to.
+ */
+export async function sendBrandInquiryEmail(
+  payload: BrandInquiryPayload,
+): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = getResendApiKey();
+  if (!apiKey) {
+    return { ok: false, error: "RESEND_API_KEY not set" };
+  }
+
+  const from = getResendFromEmail();
+  const rows: [string, string][] = [
+    ["Name", payload.name],
+    ["Company", payload.company],
+    ["Work email", payload.workEmail],
+    ["Website", payload.companyWebsite],
+    ["Product / service", payload.productOrService],
+    ["Campaign objective", payload.campaignObjective],
+    ["Budget", budgetLabel(payload.budget)],
+    ["Desired launch", payload.launchDate],
+    ["Deliverables", payload.deliverables],
+    ["Paid ads usage required", payload.paidAdsRequired ? "Yes" : "No"],
+    ["Category exclusivity required", payload.categoryExclusivityRequired ? "Yes" : "No"],
+    ["Additional info", payload.additionalInfo?.trim() || "—"],
+  ];
+
+  const rowsHtml = rows
+    .map(
+      ([label, value]) =>
+        `<tr><td style="padding:4px 12px 4px 0;color:#666;vertical-align:top;white-space:nowrap;"><strong>${escapeHtml(label)}</strong></td><td style="padding:4px 0;white-space:pre-wrap;">${escapeHtml(value)}</td></tr>`,
+    )
+    .join("");
+
+  const subject = `New campaign inquiry — ${payload.company}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: system-ui, sans-serif; line-height: 1.6; color: #333; max-width: 640px;">
+  <h1 style="font-size: 1.25rem;">New brand campaign inquiry</h1>
+  <table style="border-collapse: collapse; font-size: 0.9rem;">${rowsHtml}</table>
+</body>
+</html>
+  `.trim();
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from,
+      to: PARTNERSHIPS_EMAIL,
+      reply_to: payload.workEmail,
+      subject,
+      html,
+    });
+    if (error) {
+      console.error("[email] Brand inquiry Resend error:", error);
+      return { ok: false, error: String(error.message ?? error) };
+    }
+    return { ok: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[email] Brand inquiry send failed:", message);
     return { ok: false, error: message };
   }
 }

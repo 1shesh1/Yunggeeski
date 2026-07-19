@@ -60,3 +60,64 @@ export function parseBrandColors(input: string): string[] {
     .map((s) => s.trim())
     .filter((s) => HEX_REGEX.test(s));
 }
+
+// —— Brand campaign inquiry (/brands) ——
+
+/** Budget bands. "under_2k" is kept for filtering, not for acceptance. */
+export const BUDGET_OPTIONS = [
+  { value: "under_2k", label: "Under $2,000" },
+  { value: "2k_5k", label: "$2,000–$5,000" },
+  { value: "5k_10k", label: "$5,000–$10,000" },
+  { value: "10k_25k", label: "$10,000–$25,000" },
+  { value: "25k_plus", label: "$25,000+" },
+] as const;
+
+export type BudgetValue = (typeof BUDGET_OPTIONS)[number]["value"];
+
+const BUDGET_VALUES = BUDGET_OPTIONS.map((o) => o.value) as [BudgetValue, ...BudgetValue[]];
+
+export const YES_NO = ["yes", "no"] as const;
+export type YesNo = (typeof YES_NO)[number];
+
+export function budgetLabel(value: string): string {
+  return BUDGET_OPTIONS.find((o) => o.value === value)?.label ?? value;
+}
+
+export const brandInquirySchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(120),
+  company: z.string().trim().min(1, "Company is required").max(200),
+  work_email: z.string().trim().min(1, "Work email is required").email("Enter a valid email").max(200),
+  company_website: z
+    .string()
+    .trim()
+    .min(1, "Company website is required")
+    .max(300)
+    .refine((v) => {
+      try {
+        const url = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+        return url.hostname.includes(".");
+      } catch {
+        return false;
+      }
+    }, "Enter a valid website (e.g. company.com)"),
+  product_or_service: z.string().trim().min(1, "Product or service is required").max(2000),
+  campaign_objective: z.string().trim().min(1, "Campaign objective is required").max(2000),
+  budget: z.enum(BUDGET_VALUES, {
+    errorMap: () => ({ message: "Select an estimated budget" }),
+  }),
+  launch_date: z
+    .string()
+    .trim()
+    .min(1, "Desired launch date is required")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date (YYYY-MM-DD)"),
+  deliverables: z.string().trim().min(1, "Requested deliverables are required").max(2000),
+  paid_ads_required: z.enum(YES_NO, {
+    errorMap: () => ({ message: "Select yes or no" }),
+  }),
+  category_exclusivity_required: z.enum(YES_NO, {
+    errorMap: () => ({ message: "Select yes or no" }),
+  }),
+  additional_info: z.string().trim().max(4000).optional(),
+});
+
+export type BrandInquiryData = z.infer<typeof brandInquirySchema>;
