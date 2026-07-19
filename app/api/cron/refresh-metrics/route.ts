@@ -7,10 +7,15 @@ import {
   upsertApiPost,
   upsertSocialToken,
   deleteSnapshotsOlderThan,
+  getLatestSnapshots,
+  getMetricOverride,
+  upsertMetricOverride,
+  claimNewThresholdCrossings,
+  type MetricOverrideWrite,
 } from "@/lib/supabase";
 import { fetchInstagramMetrics, isInstagramConfigured } from "@/lib/metrics/instagram";
 import { fetchTikTokMetrics, isTikTokConfigured } from "@/lib/metrics/tiktok";
-import type { PlatformFetchResult } from "@/lib/metrics/types";
+import { NOTABLE_VIEWS_THRESHOLD, type PlatformFetchResult } from "@/lib/metrics/types";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +97,38 @@ async function runTikTok(): Promise<PlatformResult> {
   }
 }
 
+/**
+ * Ratchet the two all-time override stats UP from fresh data (never down):
+ *   - best_video_views  → max(current, latest best across platforms)
+ *   - videos_above_threshold → += posts that newly crossed the threshold
+ * Only runs for fields the admin has seeded with a baseline. Best-effort.
+ */
+async function ratchetAllTimeStats(): Promise<void> {
+  try {
+    const override = await getMetricOverride();
+    if (!override) return;
+    const threshold = override.notable_views_threshold ?? NOTABLE_VIEWS_THRESHOLD;
+    const patch: MetricOverrideWrite = {};
+
+    if (override.best_video_views != null) {
+      const snaps = await getLatestSnapshots();
+      const liveBest = Math.max(0, ...snaps.map((s) => s.best_video_views ?? 0));
+      if (liveBest > override.best_video_views) patch.best_video_views = liveBest;
+    }
+
+    if (override.videos_above_threshold != null) {
+      const newCrossings = await claimNewThresholdCrossings(threshold);
+      if (newCrossings > 0) {
+        patch.videos_above_threshold = override.videos_above_threshold + newCrossings;
+      }
+    }
+
+    if (Object.keys(patch).length > 0) await upsertMetricOverride(patch);
+  } catch (e) {
+    console.error("[refresh-metrics] ratchet failed:", e);
+  }
+}
+
 async function handle(request: NextRequest) {
   const expected = getMetricsRefreshSecret();
   if (!expected) {
@@ -105,6 +142,8 @@ async function handle(request: NextRequest) {
   }
 
   const results = await Promise.all([runInstagram(), runTikTok()]);
+  // Ratchet the all-time override stats up from the fresh posts/snapshots.
+  await ratchetAllTimeStats();
   // Retention sweep — keep ~90 days of snapshots (reads only use the latest).
   await deleteSnapshotsOlderThan(90);
   return NextResponse.json({ ok: true, results });

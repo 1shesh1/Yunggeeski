@@ -231,6 +231,12 @@ export function MetricsPanel() {
             Any value set here wins over live/snapshot data on /brands. Leave blank to use the
             computed value. Use when a platform is down or a figure can&apos;t be pulled via API.
           </p>
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Best video views</span> and{" "}
+            <span className="font-medium text-foreground">videos above threshold</span> are treated
+            as a floor: set your verified all-time numbers and the daily sync raises them
+            automatically as new posts beat them.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
