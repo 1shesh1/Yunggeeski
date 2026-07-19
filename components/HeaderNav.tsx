@@ -105,6 +105,7 @@ export function HeaderNav() {
     pathname.startsWith("/terms") ||
     pathname.startsWith("/downloads") ||
     pathname.startsWith("/orders");
+  const onBrands = pathname.startsWith("/brands");
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -185,6 +186,18 @@ export function HeaderNav() {
             Charts
           </Link>
         </nav>
+
+        <Link
+          href="/brands"
+          className={cn(
+            "flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-bold whitespace-nowrap transition-colors [-webkit-tap-highlight-color:transparent]",
+            onBrands
+              ? "bg-secondary text-secondary-foreground shadow-sm"
+              : "border border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20"
+          )}
+        >
+          Work With Yung Geeski
+        </Link>
       </div>
 
       {/* —— Desktop —— */}
@@ -247,6 +260,17 @@ export function HeaderNav() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <Link
+              href="/brands"
+              className={cn(
+                "ml-1 px-3.5 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap border",
+                onBrands
+                  ? "bg-secondary text-secondary-foreground border-secondary"
+                  : "border-secondary/40 text-secondary hover:bg-secondary/10"
+              )}
+            >
+              Work With Yung Geeski
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3 border-l border-border pl-3 shrink-0">
@@ -293,6 +317,21 @@ export function HeaderNav() {
               </div>
 
               <div className="flex-1 overflow-y-auto px-3 py-4">
+                <button
+                  type="button"
+                  className={cn(
+                    "mb-4 flex w-full min-h-11 items-center justify-center rounded-xl text-sm font-bold transition-colors",
+                    onBrands
+                      ? "bg-secondary text-secondary-foreground"
+                      : "border border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20"
+                  )}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    router.push("/brands");
+                  }}
+                >
+                  Work With Yung Geeski
+                </button>
                 <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Resources
                 </p>
