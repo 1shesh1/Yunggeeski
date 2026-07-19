@@ -91,6 +91,9 @@ export function MetricsPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
   const [savingPost, setSavingPost] = useState(false);
+  const [sortBy, setSortBy] = useState<"curated" | "views">("curated");
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/metrics", { credentials: "include" });
@@ -209,9 +212,52 @@ export function MetricsPanel() {
     await load();
   }
 
+  async function backfill(phase: string): Promise<{ remaining: number; done: boolean; processed?: number; listed?: number } | null> {
+    const res = await fetch(`/api/admin/metrics/backfill?phase=${phase}`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(typeof data.error === "string" ? data.error : "Backfill failed");
+    }
+    return res.json();
+  }
+
+  async function runBackfill() {
+    setBackfilling(true);
+    setBackfillMsg("Crawling your full post list…");
+    try {
+      const list = await backfill("list");
+      setBackfillMsg(`Listed ${list?.listed ?? 0} posts. Fetching view counts for top posts…`);
+      // Loop insights chunks until done or no progress (rate limit / nothing left).
+      for (let i = 0; i < 40; i++) {
+        const r = await backfill("insights");
+        if (!r || r.done) {
+          setBackfillMsg("Backfill complete. Sort by views to pick your top posts.");
+          break;
+        }
+        if ((r.processed ?? 0) === 0) {
+          setBackfillMsg(`Paused at ${r.remaining} remaining (likely rate-limited). Run again later to continue.`);
+          break;
+        }
+        setBackfillMsg(`Fetching view counts… ${r.remaining} remaining`);
+        await new Promise((res) => setTimeout(res, 1500));
+      }
+      setSortBy("views");
+      await load();
+    } catch (e) {
+      setBackfillMsg(e instanceof Error ? e.message : "Backfill failed");
+    } finally {
+      setBackfilling(false);
+    }
+  }
+
   if (loading) return <p className="text-muted-foreground">Loading…</p>;
 
   const featuredCount = posts.filter((p) => p.is_featured).length;
+  const sortedPosts =
+    sortBy === "views" ? [...posts].sort((a, b) => b.views - a.views) : posts;
 
   return (
     <div className="space-y-8">
@@ -400,11 +446,35 @@ export function MetricsPanel() {
 
       {/* Post list */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-muted-foreground">All posts ({posts.length})</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-muted-foreground">All posts ({posts.length})</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Sort</span>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as "curated" | "views")}>
+              <SelectTrigger className="h-8 w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="curated">Featured first</SelectItem>
+                <SelectItem value="views">Most views</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={runBackfill}
+              disabled={backfilling || !supabaseConfigured}
+            >
+              {backfilling ? "Syncing…" : "Sync full history"}
+            </Button>
+          </div>
+        </div>
+        {backfillMsg && <p className="text-xs text-muted-foreground">{backfillMsg}</p>}
         {posts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No posts yet.</p>
         ) : (
-          posts.map((p) => (
+          sortedPosts.map((p) => (
             <div
               key={p.id}
               className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3 py-3"

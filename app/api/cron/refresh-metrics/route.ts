@@ -11,9 +11,14 @@ import {
   getMetricOverride,
   upsertMetricOverride,
   claimNewThresholdCrossings,
+  getTrackedExternalIds,
   type MetricOverrideWrite,
 } from "@/lib/supabase";
-import { fetchInstagramMetrics, isInstagramConfigured } from "@/lib/metrics/instagram";
+import {
+  fetchInstagramMetrics,
+  fetchInstagramPostsByIds,
+  isInstagramConfigured,
+} from "@/lib/metrics/instagram";
 import { fetchTikTokMetrics, isTikTokConfigured } from "@/lib/metrics/tiktok";
 import { NOTABLE_VIEWS_THRESHOLD, type PlatformFetchResult } from "@/lib/metrics/types";
 
@@ -67,6 +72,11 @@ async function persist(platform: "instagram" | "tiktok", result: PlatformFetchRe
   }
 }
 
+// Keep re-fetching the top posts by views (above this floor) + all featured,
+// so posts that grow into hits stay fresh after leaving the recent window.
+const TRACK_LIMIT = 40;
+const TRACK_FLOOR = 500_000;
+
 async function runInstagram(): Promise<PlatformResult> {
   const config = getInstagramConfig();
   const token = await getSocialToken("instagram");
@@ -76,7 +86,44 @@ async function runInstagram(): Promise<PlatformResult> {
   try {
     const result = await fetchInstagramMetrics(config, token);
     await persist("instagram", result);
-    return { platform: "instagram", ok: true, followers: result.snapshot.followers, posts: result.posts.length };
+    let tracked = 0;
+
+    // Re-fetch tracked posts (top-by-views + featured) that aren't already in
+    // the recent window, so their numbers keep updating as they grow.
+    const effectiveToken =
+      result.token?.accessToken ?? token?.access_token ?? config.longLivedToken;
+    if (effectiveToken) {
+      const recentIds = new Set(result.posts.map((p) => p.externalId));
+      const trackedIds = (
+        await getTrackedExternalIds("instagram", { limit: TRACK_LIMIT, floor: TRACK_FLOOR })
+      ).filter((id) => !recentIds.has(id));
+      if (trackedIds.length > 0) {
+        const posts = await fetchInstagramPostsByIds(effectiveToken, trackedIds);
+        const fetchedAt = new Date().toISOString();
+        for (const p of posts) {
+          await upsertApiPost({
+            platform: "instagram",
+            external_id: p.externalId,
+            permalink: p.permalink,
+            thumbnail_url: p.thumbnailUrl,
+            views: p.views,
+            likes: p.likes,
+            comments: p.comments,
+            shares: p.shares,
+            saves: p.saves,
+            fetched_at: fetchedAt,
+          });
+        }
+        tracked = posts.length;
+      }
+    }
+
+    return {
+      platform: "instagram",
+      ok: true,
+      followers: result.snapshot.followers,
+      posts: result.posts.length + tracked,
+    };
   } catch (e) {
     return { platform: "instagram", error: e instanceof Error ? e.message : String(e) };
   }

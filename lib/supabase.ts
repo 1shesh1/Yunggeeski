@@ -229,6 +229,7 @@ export interface SocialPostRow {
   sort_order: number;
   fetched_at: string | null;
   counted_over_threshold: boolean;
+  views_backfilled: boolean;
 }
 
 export interface MetricOverrideRow {
@@ -400,6 +401,122 @@ export async function upsertApiPost(row: {
     },
     { onConflict: "platform,external_id" },
   );
+}
+
+/** Upsert list-level fields only (no views) — used by the backfill list crawl,
+ * where view counts come later from insights. Preserves existing views. */
+export async function upsertListPost(row: {
+  platform: "instagram" | "tiktok";
+  external_id: string;
+  permalink?: string | null;
+  thumbnail_url?: string | null;
+  likes: number;
+  comments: number;
+  fetched_at: string;
+}): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  await client.from("social_posts").upsert(
+    {
+      platform: row.platform,
+      external_id: row.external_id,
+      permalink: row.permalink ?? null,
+      thumbnail_url: row.thumbnail_url ?? null,
+      likes: row.likes,
+      comments: row.comments,
+      fetched_at: row.fetched_at,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "platform,external_id" },
+  );
+}
+
+/** External IDs to keep re-fetching daily beyond the recent window: the top
+ * posts by views (above a floor) plus every featured post. */
+export async function getTrackedExternalIds(
+  platform: "instagram" | "tiktok",
+  { limit, floor }: { limit: number; floor: number },
+): Promise<string[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const ids = new Set<string>();
+  const [top, feat] = await Promise.all([
+    client
+      .from("social_posts")
+      .select("external_id")
+      .eq("platform", platform)
+      .not("external_id", "is", null)
+      .gte("views", floor)
+      .order("views", { ascending: false })
+      .limit(limit),
+    client
+      .from("social_posts")
+      .select("external_id")
+      .eq("platform", platform)
+      .not("external_id", "is", null)
+      .eq("is_featured", true),
+  ]);
+  for (const r of [...(top.data ?? []), ...(feat.data ?? [])]) {
+    if (r.external_id) ids.add(r.external_id as string);
+  }
+  return Array.from(ids);
+}
+
+/** After a list crawl, skip posts whose views we already know. */
+export async function markBackfilledWhereViewsKnown(platform: "instagram" | "tiktok"): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  await client
+    .from("social_posts")
+    .update({ views_backfilled: true })
+    .eq("platform", platform)
+    .gt("views", 0)
+    .eq("views_backfilled", false);
+}
+
+/** Highest-engagement posts still missing a real view count — the ones worth an
+ * insights call during backfill (likes come free in the list; views don't). */
+export async function getBackfillCandidates(
+  platform: "instagram" | "tiktok",
+  { likeFloor, limit }: { likeFloor: number; limit: number },
+): Promise<{ id: string; external_id: string }[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const { data, error } = await client
+    .from("social_posts")
+    .select("id, external_id")
+    .eq("platform", platform)
+    .not("external_id", "is", null)
+    .eq("views_backfilled", false)
+    .gte("likes", likeFloor)
+    .order("likes", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data
+    .filter((r) => r.external_id)
+    .map((r) => ({ id: r.id as string, external_id: r.external_id as string }));
+}
+
+export async function markPostsBackfilled(ids: string[]): Promise<void> {
+  const client = getSupabase();
+  if (!client || ids.length === 0) return;
+  await client.from("social_posts").update({ views_backfilled: true }).in("id", ids);
+}
+
+export async function countBackfillRemaining(
+  platform: "instagram" | "tiktok",
+  likeFloor: number,
+): Promise<number> {
+  const client = getSupabase();
+  if (!client) return 0;
+  const { count } = await client
+    .from("social_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("platform", platform)
+    .not("external_id", "is", null)
+    .eq("views_backfilled", false)
+    .gte("likes", likeFloor);
+  return count ?? 0;
 }
 
 /** Baseline: mark every post currently over the threshold as counted, so the
