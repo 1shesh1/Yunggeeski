@@ -56,3 +56,45 @@ export interface MetricsResult<T> {
   /** ISO timestamp of the underlying snapshot, or null for static fallback. */
   asOf: string | null;
 }
+
+/** Default "notable views" threshold for counting standout videos. */
+export const NOTABLE_VIEWS_THRESHOLD = 4_000_000;
+
+// —— Platform client contracts (refresh job side) ——
+
+/** Normalized account snapshot returned by a platform client. */
+export interface PlatformSnapshot {
+  followers: number;
+  reach30d: number | null;
+  reach90d: number | null;
+  bestVideoViews: number | null;
+  videosAboveThreshold: number | null;
+  notableViewsThreshold: number | null;
+  raw: Record<string, unknown>;
+}
+
+/** Normalized post returned by a platform client. */
+export interface PlatformPost {
+  externalId: string;
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number | null;
+  saves: number | null;
+}
+
+/** A possibly-refreshed OAuth token the refresh job should persist. */
+export interface RefreshedToken {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: string | null;
+  scope?: string;
+}
+
+export interface PlatformFetchResult {
+  snapshot: PlatformSnapshot;
+  posts: PlatformPost[];
+  token?: RefreshedToken;
+}

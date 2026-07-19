@@ -192,3 +192,281 @@ export async function uploadLogo(orderId: string, file: Buffer, mimeType: string
   const { data: urlData } = client.storage.from(bucket).getPublicUrl(path);
   return urlData.publicUrl;
 }
+
+// —— Social metrics (/brands live data) ——
+
+export type SocialPlatform = "instagram" | "tiktok";
+
+export interface SocialSnapshotRow {
+  id: string;
+  created_at: string;
+  platform: SocialPlatform;
+  followers: number;
+  reach_30d: number | null;
+  reach_90d: number | null;
+  best_video_views: number | null;
+  videos_above_threshold: number | null;
+  notable_views_threshold: number | null;
+  raw: Record<string, unknown> | null;
+}
+
+export interface SocialPostRow {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  platform: "instagram" | "tiktok" | "cross";
+  external_id: string | null;
+  permalink: string | null;
+  thumbnail_url: string | null;
+  topic: string;
+  why_it_worked: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number | null;
+  saves: number | null;
+  is_featured: boolean;
+  sort_order: number;
+  fetched_at: string | null;
+}
+
+export interface MetricOverrideRow {
+  id: string;
+  total_followers: number | null;
+  best_video_views: number | null;
+  videos_above_threshold: number | null;
+  notable_views_threshold: number | null;
+  monthly_reach: number | null;
+  category: string | null;
+  updated_at: string;
+}
+
+export interface SocialTokenRow {
+  id: string;
+  platform: SocialPlatform;
+  access_token: string | null;
+  refresh_token: string | null;
+  expires_at: string | null;
+  scope: string | null;
+  updated_at: string;
+}
+
+/** Latest snapshot for a single platform, or null. */
+export async function getLatestSnapshot(platform: SocialPlatform): Promise<SocialSnapshotRow | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const { data, error } = await client
+    .from("social_metrics_snapshots")
+    .select("*")
+    .eq("platform", platform)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as SocialSnapshotRow;
+}
+
+/** Latest snapshot per platform (instagram + tiktok), skipping any missing. */
+export async function getLatestSnapshots(): Promise<SocialSnapshotRow[]> {
+  const results = await Promise.all([getLatestSnapshot("instagram"), getLatestSnapshot("tiktok")]);
+  return results.filter((r): r is SocialSnapshotRow => r !== null);
+}
+
+export async function insertSnapshot(row: {
+  platform: SocialPlatform;
+  followers: number;
+  reach_30d?: number | null;
+  reach_90d?: number | null;
+  best_video_views?: number | null;
+  videos_above_threshold?: number | null;
+  notable_views_threshold?: number | null;
+  raw?: Record<string, unknown> | null;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const client = getSupabase();
+  if (!client) return { ok: false, error: "Supabase not configured" };
+  const { error } = await client.from("social_metrics_snapshots").insert(row);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/** The featured posts shown on /brands, ordered for display. */
+export async function getFeaturedSocialPosts(limit = 6): Promise<SocialPostRow[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const { data, error } = await client
+    .from("social_posts")
+    .select("*")
+    .eq("is_featured", true)
+    .order("sort_order", { ascending: true })
+    .order("views", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []) as SocialPostRow[];
+}
+
+/** All posts, for the admin management view. */
+export async function listSocialPosts(): Promise<SocialPostRow[]> {
+  const client = getSupabase();
+  if (!client) return [];
+  const { data, error } = await client
+    .from("social_posts")
+    .select("*")
+    .order("is_featured", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .order("views", { ascending: false });
+  if (error) return [];
+  return (data ?? []) as SocialPostRow[];
+}
+
+export type SocialPostWrite = Partial<
+  Pick<
+    SocialPostRow,
+    | "platform"
+    | "external_id"
+    | "permalink"
+    | "thumbnail_url"
+    | "topic"
+    | "why_it_worked"
+    | "views"
+    | "likes"
+    | "comments"
+    | "shares"
+    | "saves"
+    | "is_featured"
+    | "sort_order"
+    | "fetched_at"
+  >
+>;
+
+export async function createSocialPost(row: SocialPostWrite): Promise<SocialPostRow | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const { data, error } = await client.from("social_posts").insert(row).select().single();
+  if (error || !data) return null;
+  return data as SocialPostRow;
+}
+
+export async function updateSocialPost(id: string, patch: SocialPostWrite): Promise<SocialPostRow | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const { data, error } = await client
+    .from("social_posts")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error || !data) return null;
+  return data as SocialPostRow;
+}
+
+export async function deleteSocialPost(id: string): Promise<boolean> {
+  const client = getSupabase();
+  if (!client) return false;
+  const { error } = await client.from("social_posts").delete().eq("id", id);
+  return !error;
+}
+
+/** Upsert an API-sourced post keyed on the unique (platform, external_id) index.
+ * The payload omits admin-curated columns (topic, why_it_worked, is_featured,
+ * sort_order) so ON CONFLICT preserves them; new rows get their DB defaults. */
+export async function upsertApiPost(row: {
+  platform: "instagram" | "tiktok";
+  external_id: string;
+  permalink?: string | null;
+  thumbnail_url?: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  shares?: number | null;
+  saves?: number | null;
+  fetched_at: string;
+}): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  await client.from("social_posts").upsert(
+    {
+      platform: row.platform,
+      external_id: row.external_id,
+      permalink: row.permalink ?? null,
+      thumbnail_url: row.thumbnail_url ?? null,
+      views: row.views,
+      likes: row.likes,
+      comments: row.comments,
+      shares: row.shares ?? null,
+      saves: row.saves ?? null,
+      fetched_at: row.fetched_at,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "platform,external_id" },
+  );
+}
+
+/** Retention sweep for the append-only snapshots table. */
+export async function deleteSnapshotsOlderThan(days: number): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  await client.from("social_metrics_snapshots").delete().lt("created_at", cutoff);
+}
+
+export async function getMetricOverride(): Promise<MetricOverrideRow | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const { data, error } = await client
+    .from("social_metric_overrides")
+    .select("*")
+    .eq("id", "singleton")
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as MetricOverrideRow;
+}
+
+export type MetricOverrideWrite = Partial<
+  Pick<
+    MetricOverrideRow,
+    | "total_followers"
+    | "best_video_views"
+    | "videos_above_threshold"
+    | "notable_views_threshold"
+    | "monthly_reach"
+    | "category"
+  >
+>;
+
+export async function upsertMetricOverride(patch: MetricOverrideWrite): Promise<MetricOverrideRow | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const { data, error } = await client
+    .from("social_metric_overrides")
+    .upsert({ id: "singleton", ...patch, updated_at: new Date().toISOString() }, { onConflict: "id" })
+    .select()
+    .single();
+  if (error || !data) return null;
+  return data as MetricOverrideRow;
+}
+
+export async function getSocialToken(platform: SocialPlatform): Promise<SocialTokenRow | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const { data, error } = await client
+    .from("social_api_tokens")
+    .select("*")
+    .eq("platform", platform)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as SocialTokenRow;
+}
+
+export async function upsertSocialToken(row: {
+  platform: SocialPlatform;
+  access_token?: string | null;
+  refresh_token?: string | null;
+  expires_at?: string | null;
+  scope?: string | null;
+}): Promise<void> {
+  const client = getSupabase();
+  if (!client) return;
+  await client
+    .from("social_api_tokens")
+    .upsert({ ...row, updated_at: new Date().toISOString() }, { onConflict: "platform" });
+}

@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MetricsPanel } from "./MetricsPanel";
 
 const ORDER_STATUS_OPTIONS = [
   { value: "awaiting_form", label: "Awaiting form" },
@@ -56,6 +57,7 @@ export default function AdminPage() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"orders" | "metrics">("orders");
 
   const fetchOrders = useCallback(async () => {
     const res = await fetch("/api/admin/orders", { credentials: "include" });
@@ -183,8 +185,25 @@ export default function AdminPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <h1 className="text-2xl font-bold mb-6">Orders</h1>
-      {orders === null || orders.length === 0 ? (
+      <div className="mb-6 flex items-center gap-1 border-b border-border">
+        {(["orders", "metrics"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={
+              tab === t
+                ? "px-3 py-2 text-sm font-semibold border-b-2 border-secondary text-foreground -mb-px capitalize"
+                : "px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground capitalize"
+            }
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {tab === "metrics" ? (
+        <MetricsPanel />
+      ) : orders === null || orders.length === 0 ? (
         <p className="text-muted-foreground">No orders yet.</p>
       ) : (
         <div className="space-y-4">

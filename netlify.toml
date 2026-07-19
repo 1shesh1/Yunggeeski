@@ -17,3 +17,10 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Daily refresh of live social metrics for /brands. The scheduled function in
+# netlify/functions/refresh-metrics-cron.mts pings POST /api/cron/refresh-metrics
+# with METRICS_REFRESH_SECRET. Requires METRICS_REFRESH_SECRET (and the platform
+# API keys) to be set in the Netlify env; otherwise the route no-ops.
+[functions."refresh-metrics-cron"]
+  schedule = "@daily"

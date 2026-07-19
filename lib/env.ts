@@ -76,6 +76,44 @@ export function getAdminSecret(): string | undefined {
   return getStr("ADMIN_SECRET");
 }
 
+// —— Social metrics (/brands live data; see lib/metrics/*) ——
+
+export function getMetricsRefreshSecret(): string | undefined {
+  return getStr("METRICS_REFRESH_SECRET");
+}
+
+export interface InstagramApiConfig {
+  appId?: string;
+  appSecret?: string;
+  longLivedToken?: string;
+  businessAccountId?: string;
+}
+
+export function getInstagramConfig(): InstagramApiConfig {
+  return {
+    appId: getStr("IG_APP_ID"),
+    appSecret: getStr("IG_APP_SECRET"),
+    longLivedToken: getStr("IG_LONG_LIVED_TOKEN"),
+    businessAccountId: getStr("IG_BUSINESS_ACCOUNT_ID"),
+  };
+}
+
+export interface TikTokApiConfig {
+  clientKey?: string;
+  clientSecret?: string;
+  accessToken?: string;
+  refreshToken?: string;
+}
+
+export function getTikTokConfig(): TikTokApiConfig {
+  return {
+    clientKey: getStr("TIKTOK_CLIENT_KEY"),
+    clientSecret: getStr("TIKTOK_CLIENT_SECRET"),
+    accessToken: getStr("TIKTOK_ACCESS_TOKEN"),
+    refreshToken: getStr("TIKTOK_REFRESH_TOKEN"),
+  };
+}
+
 /** HS256 secret for course magic-link and session JWTs. Required in production. */
 export function getCourseAccessJwtSecret(): string {
   const s = getStr("COURSE_ACCESS_JWT_SECRET");

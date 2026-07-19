@@ -17,6 +17,11 @@ import {
 } from "@/lib/sponsorship";
 import { formatCompact } from "@/lib/utils";
 
+// Re-render on the server every 5 minutes so refreshed snapshots and admin
+// overrides reach the live page without a redeploy (the page reads the metrics
+// cache; without this it would be frozen at build time).
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Work With Yung Geeski — Sponsored Financial Content",
   description:

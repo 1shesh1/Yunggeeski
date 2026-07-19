@@ -58,6 +58,69 @@ create table if not exists public.brand_inquiries (
 create index if not exists brand_inquiries_created_at_idx
   on public.brand_inquiries (created_at desc);
 
+-- Live social-metrics cache for /brands (see migrations/add_social_metrics_tables.sql).
+create table if not exists public.social_metrics_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now() not null,
+  platform text not null check (platform in ('instagram', 'tiktok')),
+  followers int default 0 not null,
+  reach_30d int,
+  reach_90d int,
+  best_video_views int,
+  videos_above_threshold int,
+  notable_views_threshold int,
+  raw jsonb
+);
+
+create index if not exists social_metrics_snapshots_platform_created_idx
+  on public.social_metrics_snapshots (platform, created_at desc);
+
+create table if not exists public.social_posts (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null,
+  platform text not null check (platform in ('instagram', 'tiktok', 'cross')),
+  external_id text,
+  permalink text,
+  thumbnail_url text,
+  topic text default '' not null,
+  why_it_worked text default '' not null,
+  views int default 0 not null,
+  likes int default 0 not null,
+  comments int default 0 not null,
+  shares int,
+  saves int,
+  is_featured boolean default false not null,
+  sort_order int default 0 not null,
+  fetched_at timestamptz
+);
+
+create unique index if not exists social_posts_platform_external_idx
+  on public.social_posts (platform, external_id);
+create index if not exists social_posts_featured_idx
+  on public.social_posts (is_featured, sort_order);
+
+create table if not exists public.social_api_tokens (
+  id uuid primary key default gen_random_uuid(),
+  platform text unique not null check (platform in ('instagram', 'tiktok')),
+  access_token text,
+  refresh_token text,
+  expires_at timestamptz,
+  scope text,
+  updated_at timestamptz default now() not null
+);
+
+create table if not exists public.social_metric_overrides (
+  id text primary key default 'singleton',
+  total_followers int,
+  best_video_views int,
+  videos_above_threshold int,
+  notable_views_threshold int,
+  monthly_reach int,
+  category text,
+  updated_at timestamptz default now() not null
+);
+
 -- Optional: RLS policies (enable if you use RLS)
 -- alter table public.orders enable row level security;
 -- create policy "Service role can do everything" on public.orders for all using (true);
