@@ -205,3 +205,77 @@ export async function fetchInstagramMetrics(
     token: refreshedToken,
   };
 }
+
+export interface IgListItem {
+  externalId: string;
+  permalink: string | null;
+  thumbnailUrl: string | null;
+  likes: number;
+  comments: number;
+}
+
+/**
+ * Paginate the FULL media history — cheap (likes/comments come free in the list,
+ * no per-post insights). One call per page; bounded by `maxPages`.
+ */
+export async function fetchInstagramMediaList(token: string, maxPages = 50): Promise<IgListItem[]> {
+  const items: IgListItem[] = [];
+  let url:
+    | string
+    | null = `${API_BASE}/me/media?fields=id,permalink,media_type,thumbnail_url,media_url,like_count,comments_count&limit=100&access_token=${encodeURIComponent(token)}`;
+  let page = 0;
+  while (url && page < maxPages) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`Instagram media list ${res.status}: ${body.slice(0, 200)}`);
+    }
+    const json = (await res.json()) as { data?: (IgMedia & { id: string })[]; paging?: { next?: string } };
+    for (const m of json.data ?? []) {
+      items.push({
+        externalId: m.id,
+        permalink: m.permalink ?? null,
+        thumbnailUrl: m.thumbnail_url ?? m.media_url ?? null,
+        likes: m.like_count ?? 0,
+        comments: m.comments_count ?? 0,
+      });
+    }
+    url = json.paging?.next ?? null;
+    page += 1;
+  }
+  return items;
+}
+
+/**
+ * Fetch specific posts by ID (media fields + insights) — for keeping tracked
+ * posts fresh beyond the recent window, and for backfilling view counts.
+ * Skips (omits) any ID that errors so callers can retry those later.
+ */
+export async function fetchInstagramPostsByIds(token: string, ids: string[]): Promise<PlatformPost[]> {
+  const out: PlatformPost[] = [];
+  for (const id of ids) {
+    try {
+      const m = await igGet<IgMedia & { id: string }>(id, {
+        fields: "id,permalink,media_type,thumbnail_url,media_url,like_count,comments_count",
+        access_token: token,
+      });
+      const isVideo = m.media_type === "VIDEO" || m.media_type === "REELS";
+      const { views, saves } = isVideo
+        ? await fetchMediaViews(m.id, token)
+        : { views: 0, saves: null };
+      out.push({
+        externalId: m.id,
+        permalink: m.permalink ?? null,
+        thumbnailUrl: m.thumbnail_url ?? m.media_url ?? null,
+        views,
+        likes: m.like_count ?? 0,
+        comments: m.comments_count ?? 0,
+        shares: null,
+        saves,
+      });
+    } catch {
+      // Skip — left unmarked so backfill/tracking retries it next run.
+    }
+  }
+  return out;
+}
