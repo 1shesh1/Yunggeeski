@@ -231,6 +231,7 @@ export interface SocialPostRow {
   counted_over_threshold: boolean;
   views_backfilled: boolean;
   caption: string | null;
+  why_it_worked_long: string | null;
 }
 
 export interface MetricOverrideRow {
@@ -331,6 +332,7 @@ export type SocialPostWrite = Partial<
     | "thumbnail_url"
     | "topic"
     | "why_it_worked"
+    | "why_it_worked_long"
     | "views"
     | "likes"
     | "comments"

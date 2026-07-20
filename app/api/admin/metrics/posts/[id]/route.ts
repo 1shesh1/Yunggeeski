@@ -8,6 +8,8 @@ function buildPatch(body: Record<string, unknown>): SocialPostWrite {
   const patch: SocialPostWrite = {};
   if (typeof body.topic === "string") patch.topic = body.topic.trim();
   if (typeof body.why_it_worked === "string") patch.why_it_worked = body.why_it_worked.trim();
+  if (typeof body.why_it_worked_long === "string")
+    patch.why_it_worked_long = body.why_it_worked_long.trim();
   if ("permalink" in body)
     patch.permalink = typeof body.permalink === "string" && body.permalink.trim() ? body.permalink.trim() : null;
   if ("thumbnail_url" in body)
