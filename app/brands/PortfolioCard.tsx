@@ -1,9 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Heart, MessageCircle, Eye, Info } from "lucide-react";
+import { BarChart3, Heart, MessageCircle, Eye, Info, ExternalLink } from "lucide-react";
 import type { PortfolioPost } from "@/lib/metrics/types";
 import { formatCompact, cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 /** Captions run long — clip to a readable length on a word boundary. */
 function clip(text: string, max = 220): string {
@@ -24,6 +30,7 @@ function clip(text: string, max = 220): string {
 export function PortfolioCard({ post }: { post: PortfolioPost }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const thumb = post.thumbnailUrl;
   const showImage = thumb && !imgFailed;
 
@@ -32,6 +39,10 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
   const overlayText = curated || (post.caption?.trim() ? clip(post.caption) : "");
   const hasWhy = Boolean(overlayText);
   const label = post.topic?.trim() || "this post";
+
+  // Long-form analysis opens in a modal; the card only ever shows the hook.
+  const longText = post.whyItWorkedLong?.trim();
+  const hasLong = Boolean(longText);
 
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
@@ -80,16 +91,22 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
               )}
             >
               <Info className="h-3 w-3" aria-hidden />
-              {curated ? "Why it worked" : "Caption"}
+              {hasLong ? "Why it worked — read more" : curated ? "Why it worked" : "Caption"}
             </span>
 
             {/* Transparent hit area on top — keeps the whole thumbnail tappable
                 and keyboard-operable without wrapping the image in a button. */}
             <button
               type="button"
-              onClick={() => setShowWhy((v) => !v)}
+              onClick={() => (hasLong ? setModalOpen(true) : setShowWhy((v) => !v))}
               aria-expanded={showWhy}
-              aria-label={showWhy ? `Hide details for ${label}` : `Show details for ${label}`}
+              aria-label={
+                hasLong
+                  ? `Read the full analysis for ${label}`
+                  : showWhy
+                    ? `Hide details for ${label}`
+                    : `Show details for ${label}`
+              }
               className="absolute inset-0 z-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary"
             />
           </>
@@ -113,6 +130,47 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
           </span>
         </div>
       </div>
+
+      {hasLong && (
+        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-left text-lg">{post.topic || "Why it worked"}</DialogTitle>
+            </DialogHeader>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" aria-hidden />
+                {formatCompact(post.views)} views
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Heart className="h-3.5 w-3.5" aria-hidden />
+                {formatCompact(post.likes)}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+                {formatCompact(post.comments)}
+              </span>
+            </div>
+
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+              {longText}
+            </p>
+
+            {post.permalink && (
+              <a
+                href={post.permalink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-secondary hover:underline"
+              >
+                View the post
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </article>
   );
 }

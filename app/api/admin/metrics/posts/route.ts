@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     platform,
     topic,
     why_it_worked: nonEmpty(body.why_it_worked) ?? "",
+    why_it_worked_long: nonEmpty(body.why_it_worked_long) ?? null,
     permalink: nonEmpty(body.permalink),
     thumbnail_url: nonEmpty(body.thumbnail_url),
     views: toInt(body.views),

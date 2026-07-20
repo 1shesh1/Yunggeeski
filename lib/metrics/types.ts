@@ -31,8 +31,10 @@ export interface PortfolioPost {
   platform: Platform | "cross";
   /** Short topic/title, e.g. "Pelosi vs Buffett". */
   topic: string;
-  /** One-sentence explanation of why the post performed. */
+  /** Short hook explaining why the post performed (card overlay). */
   whyItWorked: string;
+  /** Long-form analysis shown in the card modal. */
+  whyItWorkedLong?: string | null;
   /** The post's own caption — shown in the overlay when whyItWorked is empty. */
   caption?: string | null;
   views: number;

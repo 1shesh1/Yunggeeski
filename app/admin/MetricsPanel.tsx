@@ -28,6 +28,7 @@ interface PostRow {
   platform: "instagram" | "tiktok" | "cross";
   topic: string;
   why_it_worked: string;
+  why_it_worked_long: string | null;
   caption: string | null;
   views: number;
   likes: number;
@@ -50,6 +51,7 @@ const EMPTY_POST = {
   platform: "cross" as PostRow["platform"],
   topic: "",
   why_it_worked: "",
+  why_it_worked_long: "",
   views: "",
   likes: "",
   comments: "",
@@ -142,6 +144,7 @@ export function MetricsPanel() {
       platform: p.platform,
       topic: p.topic,
       why_it_worked: p.why_it_worked,
+      why_it_worked_long: p.why_it_worked_long ?? "",
       views: String(p.views),
       likes: String(p.likes),
       comments: String(p.comments),
@@ -170,6 +173,7 @@ export function MetricsPanel() {
         platform: postForm.platform,
         topic: postForm.topic,
         why_it_worked: postForm.why_it_worked,
+        why_it_worked_long: postForm.why_it_worked_long,
         views: Number(postForm.views) || 0,
         likes: Number(postForm.likes) || 0,
         comments: Number(postForm.comments) || 0,
@@ -359,12 +363,25 @@ export function MetricsPanel() {
             </div>
           </div>
           <div>
-            <Label htmlFor="p-why">Why it worked</Label>
+            <Label htmlFor="p-why">Why it worked — short hook</Label>
             <Input
               id="p-why"
               value={postForm.why_it_worked}
               onChange={(e) => setPostForm((f) => ({ ...f, why_it_worked: e.target.value }))}
               className="mt-1"
+              placeholder="1–2 sentences, shown on the card"
+              disabled={!supabaseConfigured}
+            />
+          </div>
+          <div>
+            <Label htmlFor="p-why-long">Why it worked — full analysis (optional)</Label>
+            <textarea
+              id="p-why-long"
+              value={postForm.why_it_worked_long}
+              onChange={(e) => setPostForm((f) => ({ ...f, why_it_worked_long: e.target.value }))}
+              rows={6}
+              placeholder="Long-form write-up. When set, the card becomes clickable and opens this in a modal."
+              className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={!supabaseConfigured}
             />
           </div>
