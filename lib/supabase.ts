@@ -230,6 +230,7 @@ export interface SocialPostRow {
   fetched_at: string | null;
   counted_over_threshold: boolean;
   views_backfilled: boolean;
+  caption: string | null;
 }
 
 export interface MetricOverrideRow {
@@ -325,6 +326,7 @@ export type SocialPostWrite = Partial<
     SocialPostRow,
     | "platform"
     | "external_id"
+    | "caption"
     | "permalink"
     | "thumbnail_url"
     | "topic"
@@ -374,6 +376,7 @@ export async function deleteSocialPost(id: string): Promise<boolean> {
 export async function upsertApiPost(row: {
   platform: "instagram" | "tiktok";
   external_id: string;
+  caption?: string | null;
   permalink?: string | null;
   thumbnail_url?: string | null;
   views: number;
@@ -389,6 +392,7 @@ export async function upsertApiPost(row: {
     {
       platform: row.platform,
       external_id: row.external_id,
+      caption: row.caption ?? null,
       permalink: row.permalink ?? null,
       thumbnail_url: row.thumbnail_url ?? null,
       views: row.views,
@@ -408,6 +412,7 @@ export async function upsertApiPost(row: {
 export async function upsertListPost(row: {
   platform: "instagram" | "tiktok";
   external_id: string;
+  caption?: string | null;
   permalink?: string | null;
   thumbnail_url?: string | null;
   likes: number;
@@ -420,6 +425,7 @@ export async function upsertListPost(row: {
     {
       platform: row.platform,
       external_id: row.external_id,
+      caption: row.caption ?? null,
       permalink: row.permalink ?? null,
       thumbnail_url: row.thumbnail_url ?? null,
       likes: row.likes,

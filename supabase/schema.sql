@@ -94,7 +94,8 @@ create table if not exists public.social_posts (
   sort_order int default 0 not null,
   fetched_at timestamptz,
   counted_over_threshold boolean default false not null,
-  views_backfilled boolean default false not null
+  views_backfilled boolean default false not null,
+  caption text
 );
 
 create unique index if not exists social_posts_platform_external_idx

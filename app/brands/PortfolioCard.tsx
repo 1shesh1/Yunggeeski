@@ -5,18 +5,33 @@ import { BarChart3, Heart, MessageCircle, Eye, Info } from "lucide-react";
 import type { PortfolioPost } from "@/lib/metrics/types";
 import { formatCompact, cn } from "@/lib/utils";
 
+/** Captions run long — clip to a readable length on a word boundary. */
+function clip(text: string, max = 220): string {
+  const t = text.trim().replace(/\s+/g, " ");
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
 /**
  * A single featured post in the performance grid: thumbnail, view/like/comment
- * stats, and a "why it worked" overlay revealed on hover (desktop) or tap
- * (mobile). Falls back to a branded placeholder when no thumbnail asset is
- * wired yet (mirrors VideoPlayer).
+ * stats, and an overlay revealed on hover (desktop) or tap (mobile). The overlay
+ * shows the curated "why it worked" copy, falling back to the post's own caption
+ * when none has been written. Falls back to a branded placeholder when no
+ * thumbnail asset is wired yet (mirrors VideoPlayer).
  */
 export function PortfolioCard({ post }: { post: PortfolioPost }) {
   const [imgFailed, setImgFailed] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const thumb = post.thumbnailUrl;
   const showImage = thumb && !imgFailed;
-  const hasWhy = Boolean(post.whyItWorked?.trim());
+
+  // Curated copy wins; otherwise fall back to the post's own caption.
+  const curated = post.whyItWorked?.trim();
+  const overlayText = curated || (post.caption?.trim() ? clip(post.caption) : "");
+  const hasWhy = Boolean(overlayText);
+  const label = post.topic?.trim() || "this post";
 
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
@@ -54,7 +69,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
                 showWhy ? "opacity-100" : "opacity-0 md:group-hover:opacity-100",
               )}
             >
-              <p className="text-sm leading-relaxed text-white">{post.whyItWorked}</p>
+              <p className="line-clamp-[10] text-sm leading-relaxed text-white">{overlayText}</p>
             </div>
 
             {/* Affordance so it's discoverable; hides once the overlay is up. */}
@@ -65,7 +80,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
               )}
             >
               <Info className="h-3 w-3" aria-hidden />
-              Why it worked
+              {curated ? "Why it worked" : "Caption"}
             </span>
 
             {/* Transparent hit area on top — keeps the whole thumbnail tappable
@@ -74,9 +89,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
               type="button"
               onClick={() => setShowWhy((v) => !v)}
               aria-expanded={showWhy}
-              aria-label={
-                showWhy ? `Hide why ${post.topic} worked` : `Show why ${post.topic} worked`
-              }
+              aria-label={showWhy ? `Hide details for ${label}` : `Show details for ${label}`}
               className="absolute inset-0 z-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary"
             />
           </>

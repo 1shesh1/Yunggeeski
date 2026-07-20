@@ -33,6 +33,8 @@ export interface PortfolioPost {
   topic: string;
   /** One-sentence explanation of why the post performed. */
   whyItWorked: string;
+  /** The post's own caption — shown in the overlay when whyItWorked is empty. */
+  caption?: string | null;
   views: number;
   likes: number;
   comments: number;
@@ -78,6 +80,8 @@ export interface PlatformPost {
   externalId: string;
   permalink: string | null;
   thumbnailUrl: string | null;
+  /** The post's own caption (IG `caption`, TikTok `title`). */
+  caption: string | null;
   views: number;
   likes: number;
   comments: number;
