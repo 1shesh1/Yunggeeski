@@ -33,6 +33,7 @@ const REFRESH_SKEW_MS = 7 * 86_400_000; // refresh when <7 days to expiry
 
 interface IgMedia {
   id: string;
+  caption?: string;
   permalink?: string;
   media_type?: string;
   thumbnail_url?: string;
@@ -160,7 +161,7 @@ export async function fetchInstagramMetrics(
   });
 
   const mediaResp = await igGet<{ data: IgMedia[] }>("me/media", {
-    fields: "id,permalink,media_type,thumbnail_url,media_url,like_count,comments_count,timestamp",
+    fields: "id,caption,permalink,media_type,thumbnail_url,media_url,like_count,comments_count,timestamp",
     limit: String(MEDIA_LIMIT),
     access_token: token,
   });
@@ -172,6 +173,7 @@ export async function fetchInstagramMetrics(
     const { views, saves } = isVideo ? await fetchMediaViews(m.id, token) : { views: 0, saves: null };
     posts.push({
       externalId: m.id,
+      caption: m.caption ?? null,
       permalink: m.permalink ?? null,
       thumbnailUrl: m.thumbnail_url ?? m.media_url ?? null,
       views,
@@ -208,6 +210,7 @@ export async function fetchInstagramMetrics(
 
 export interface IgListItem {
   externalId: string;
+  caption: string | null;
   permalink: string | null;
   thumbnailUrl: string | null;
   likes: number;
@@ -222,7 +225,7 @@ export async function fetchInstagramMediaList(token: string, maxPages = 50): Pro
   const items: IgListItem[] = [];
   let url:
     | string
-    | null = `${API_BASE}/me/media?fields=id,permalink,media_type,thumbnail_url,media_url,like_count,comments_count&limit=100&access_token=${encodeURIComponent(token)}`;
+    | null = `${API_BASE}/me/media?fields=id,caption,permalink,media_type,thumbnail_url,media_url,like_count,comments_count&limit=100&access_token=${encodeURIComponent(token)}`;
   let page = 0;
   while (url && page < maxPages) {
     const res = await fetch(url, { cache: "no-store" });
@@ -234,6 +237,7 @@ export async function fetchInstagramMediaList(token: string, maxPages = 50): Pro
     for (const m of json.data ?? []) {
       items.push({
         externalId: m.id,
+        caption: m.caption ?? null,
         permalink: m.permalink ?? null,
         thumbnailUrl: m.thumbnail_url ?? m.media_url ?? null,
         likes: m.like_count ?? 0,
@@ -256,7 +260,7 @@ export async function fetchInstagramPostsByIds(token: string, ids: string[]): Pr
   for (const id of ids) {
     try {
       const m = await igGet<IgMedia & { id: string }>(id, {
-        fields: "id,permalink,media_type,thumbnail_url,media_url,like_count,comments_count",
+        fields: "id,caption,permalink,media_type,thumbnail_url,media_url,like_count,comments_count",
         access_token: token,
       });
       const isVideo = m.media_type === "VIDEO" || m.media_type === "REELS";
@@ -265,6 +269,7 @@ export async function fetchInstagramPostsByIds(token: string, ids: string[]): Pr
         : { views: 0, saves: null };
       out.push({
         externalId: m.id,
+        caption: m.caption ?? null,
         permalink: m.permalink ?? null,
         thumbnailUrl: m.thumbnail_url ?? m.media_url ?? null,
         views,

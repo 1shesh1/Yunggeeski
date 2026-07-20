@@ -155,6 +155,7 @@ function mapRow(row: SocialPostRow): PortfolioPost {
     platform: row.platform,
     topic: row.topic,
     whyItWorked: row.why_it_worked,
+    caption: row.caption,
     views: row.views,
     likes: row.likes,
     comments: row.comments,

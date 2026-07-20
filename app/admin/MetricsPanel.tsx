@@ -28,6 +28,7 @@ interface PostRow {
   platform: "instagram" | "tiktok" | "cross";
   topic: string;
   why_it_worked: string;
+  caption: string | null;
   views: number;
   likes: number;
   comments: number;
@@ -485,7 +486,9 @@ export function MetricsPanel() {
                 Featured
               </label>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{p.topic || "(untitled)"}</p>
+                <p className="truncate text-sm font-medium">
+                  {p.topic || p.caption || "(untitled)"}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {p.platform} · {p.views.toLocaleString()} views · {p.likes.toLocaleString()} likes ·
                   sort {p.sort_order}

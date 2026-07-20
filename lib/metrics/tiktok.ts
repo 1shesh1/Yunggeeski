@@ -147,6 +147,8 @@ export async function fetchTikTokMetrics(
 
   const posts: PlatformPost[] = videos.map((v) => ({
     externalId: v.id,
+    // TikTok's `title` is the caption equivalent.
+    caption: v.title ?? null,
     permalink: v.share_url ?? null,
     thumbnailUrl: v.cover_image_url ?? null,
     views: v.view_count ?? 0,

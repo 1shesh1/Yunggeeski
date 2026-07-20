@@ -51,6 +51,7 @@ async function persist(platform: "instagram" | "tiktok", result: PlatformFetchRe
     await upsertApiPost({
       platform,
       external_id: p.externalId,
+      caption: p.caption,
       permalink: p.permalink,
       thumbnail_url: p.thumbnailUrl,
       views: p.views,
@@ -104,6 +105,7 @@ async function runInstagram(): Promise<PlatformResult> {
           await upsertApiPost({
             platform: "instagram",
             external_id: p.externalId,
+            caption: p.caption,
             permalink: p.permalink,
             thumbnail_url: p.thumbnailUrl,
             views: p.views,

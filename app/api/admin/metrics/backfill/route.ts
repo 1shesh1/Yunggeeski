@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         await upsertListPost({
           platform: "instagram",
           external_id: it.externalId,
+          caption: it.caption,
           permalink: it.permalink,
           thumbnail_url: it.thumbnailUrl,
           likes: it.likes,
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
       const dbId = idByExternal.get(p.externalId);
       if (!dbId) continue;
       await updateSocialPost(dbId, {
+        caption: p.caption,
         views: p.views,
         likes: p.likes,
         comments: p.comments,
