@@ -117,14 +117,23 @@ export interface CaseStudyResult {
   label: string;
   /** Display value; null renders as "—" until a verified number is available. */
   value: string | null;
+  /** Featured as a primary proof metric (bigger, accented). */
+  highlight?: boolean;
 }
 
 export interface CaseStudy {
   slug: string;
   client: string;
+  /** Client logo path in /public. Falls back to the client name if missing. */
+  logo?: string | null;
   objective: string;
   approach: string;
+  deliverables: string[];
   results: CaseStudyResult[];
+  /** One-line takeaway shown as a callout under the results. */
+  keyResult?: string;
+  /** Sponsorship disclosure line. */
+  disclosure?: string;
   /** Comment-section proof screenshots (public/ paths). Empty until assets land. */
   screenshots: string[];
 }
@@ -132,19 +141,30 @@ export interface CaseStudy {
 export const DELTA_OPTIONS_CASE_STUDY: CaseStudy = {
   slug: "delta-options",
   client: "Delta Options",
+  logo: "/images/brands/delta-options.png",
   objective:
-    "Generate awareness and audience interest in an options service through native chart content.",
+    "Increase awareness and generate measurable interest in Delta Options through native short-form finance content.",
   approach:
-    'Created finance comparison charts with a campaign-specific "OPTION" comment CTA integrated into the caption and pinned comment.',
-  // Values are null until verified numbers + screenshots are supplied.
-  results: [
-    { label: "Views", value: null },
-    { label: "Comments", value: null },
-    { label: '"OPTION" comments', value: null },
-    { label: "Profile visits", value: null },
-    { label: "Link clicks", value: null },
-    { label: "Leads / sign-ups", value: null },
+    "Yung Geeski created data-driven comparison charts that incorporated a campaign-specific “OPTION” call to action in the captions and pinned comments.",
+  deliverables: [
+    "6 sponsored Instagram Reels",
+    "Custom chart research and production",
+    "Caption and pinned-comment copy",
+    "Integrated “OPTION” comment CTA",
   ],
+  results: [
+    { label: "“OPTION” comments", value: "292", highlight: true },
+    { label: "Link clicks", value: "193", highlight: true },
+    { label: "Views", value: "103,581" },
+    { label: "Accounts reached", value: "73,182" },
+    { label: "Saves", value: "863" },
+    { label: "Likes", value: "687" },
+    { label: "Comments", value: "451" },
+    { label: "Shares", value: "308" },
+  ],
+  keyResult:
+    "The campaign generated approximately 292 direct “OPTION” responses — measurable audience intent, not passive viewership.",
+  disclosure: "Sponsored content was clearly disclosed.",
   screenshots: [],
 };
 
