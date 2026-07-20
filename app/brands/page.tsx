@@ -7,6 +7,7 @@ import { StickyCtaBanner } from "@/components/StickyCtaBanner";
 import { PortfolioCard } from "./PortfolioCard";
 import { BrandHeroMontage } from "./BrandHeroMontage";
 import { BrandInquiryForm } from "./BrandInquiryForm";
+import { CaseStudyLogo } from "./CaseStudyLogo";
 import { getAccountMetrics, getFeaturedPortfolio } from "@/lib/metrics/service";
 import {
   SPONSOR_PACKAGES,
@@ -52,6 +53,8 @@ export default async function BrandsPage() {
   const mediaKitAvailable = existsSync(path.join(process.cwd(), "public", MEDIA_KIT_HREF));
   const caseStudy = DELTA_OPTIONS_CASE_STUDY;
   const caseStudyHasResults = caseStudy.results.some((r) => r.value !== null);
+  const caseStudyHighlights = caseStudy.results.filter((r) => r.highlight && r.value !== null);
+  const caseStudyStandard = caseStudy.results.filter((r) => !r.highlight);
   const asOfNote = metricsResult.asOf
     ? `As of ${new Date(metricsResult.asOf).toLocaleDateString("en-US", {
         month: "short",
@@ -208,8 +211,8 @@ export default async function BrandsPage() {
         <section className="bg-card/30 px-4 py-20">
           <div className="container mx-auto max-w-4xl">
             <p className={eyebrow}>Case Study</p>
-            <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl">
-              {caseStudy.client}
+            <h2 className="mb-4 flex justify-center">
+              <CaseStudyLogo src={caseStudy.logo} client={caseStudy.client} />
             </h2>
             <p className="mx-auto mb-10 max-w-lg text-center text-sm text-muted-foreground">
               A native chart campaign built around a single, trackable comment CTA.
@@ -226,13 +229,30 @@ export default async function BrandsPage() {
               </div>
               <div className="rounded-2xl border border-border bg-card p-6">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
-                  Approach
+                  Campaign
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {caseStudy.approach}
                 </p>
               </div>
             </div>
+
+            {/* Deliverables */}
+            {caseStudy.deliverables.length > 0 && (
+              <div className="mt-5 rounded-2xl border border-border bg-card p-6">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-secondary">
+                  Deliverables
+                </h3>
+                <ul className="grid gap-2.5 sm:grid-cols-2">
+                  {caseStudy.deliverables.map((d) => (
+                    <li key={d} className="flex items-start gap-2.5 text-sm">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden />
+                      <span className="leading-relaxed">{d}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Results — gated: only render the metric grid once verified numbers exist,
                 otherwise a clean placeholder instead of a row of em-dashes. */}
@@ -241,23 +261,46 @@ export default async function BrandsPage() {
                 Results
               </h3>
               {caseStudyHasResults ? (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                  {caseStudy.results.map((r) => (
-                    <div
-                      key={r.label}
-                      className="rounded-xl border border-border/60 bg-background/40 px-4 py-4 text-center"
-                    >
-                      <p className="text-lg font-bold text-foreground">{r.value ?? "—"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
+                <>
+                  {caseStudyHighlights.length > 0 && (
+                    <div className="mb-4 grid gap-4 sm:grid-cols-2">
+                      {caseStudyHighlights.map((r) => (
+                        <div
+                          key={r.label}
+                          className="rounded-xl border border-secondary/30 bg-secondary/5 px-4 py-5 text-center"
+                        >
+                          <p className="text-3xl font-bold text-secondary">{r.value}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {caseStudyStandard.map((r) => (
+                      <div
+                        key={r.label}
+                        className="rounded-xl border border-border/60 bg-background/40 px-4 py-4 text-center"
+                      >
+                        <p className="text-lg font-bold text-foreground">{r.value ?? "—"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <p className="py-4 text-center text-sm text-muted-foreground">
                   Verified campaign results are being finalized and will be published here.
                 </p>
               )}
             </div>
+
+            {/* Key result callout */}
+            {caseStudy.keyResult && (
+              <div className="mt-5 flex items-start gap-3 rounded-2xl border border-secondary/30 bg-secondary/5 p-6">
+                <Quote className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden />
+                <p className="text-sm leading-relaxed">{caseStudy.keyResult}</p>
+              </div>
+            )}
 
             {/* Comment proof */}
             {caseStudy.screenshots.length > 0 && (
@@ -273,10 +316,12 @@ export default async function BrandsPage() {
                 ))}
               </div>
             )}
-            <p className="mt-6 flex items-center justify-center gap-2 text-center text-xs text-muted-foreground">
-              <Quote className="h-3.5 w-3.5 shrink-0 text-secondary" />
-              Comment intent proves campaign impact better than a vanity metric.
-            </p>
+
+            {caseStudy.disclosure && (
+              <p className="mt-6 text-center text-xs text-muted-foreground">
+                {caseStudy.disclosure}
+              </p>
+            )}
           </div>
         </section>
 
