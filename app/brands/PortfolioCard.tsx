@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Heart, MessageCircle, Eye, Info, ExternalLink } from "lucide-react";
+import { BarChart3, Heart, MessageCircle, Eye, Info, ExternalLink, ArrowRight } from "lucide-react";
 import type { PortfolioPost } from "@/lib/metrics/types";
 import { formatCompact, cn } from "@/lib/utils";
 import {
@@ -76,11 +76,17 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
             {/* Why-it-worked overlay: hover on desktop, tap on mobile. */}
             <div
               className={cn(
-                "pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/85 p-5 text-center backdrop-blur-[2px] transition-opacity duration-200",
+                "pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/85 p-5 text-center backdrop-blur-[2px] transition-opacity duration-200",
                 showWhy ? "opacity-100" : "opacity-0 md:group-hover:opacity-100",
               )}
             >
-              <p className="line-clamp-[10] text-sm leading-relaxed text-white">{overlayText}</p>
+              <p className="line-clamp-[8] text-sm leading-relaxed text-white">{overlayText}</p>
+              {hasLong && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-secondary">
+                  Read the full breakdown
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </span>
+              )}
             </div>
 
             {/* Affordance so it's discoverable; hides once the overlay is up. */}
@@ -91,7 +97,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
               )}
             >
               <Info className="h-3 w-3" aria-hidden />
-              {hasLong ? "Why it worked — read more" : curated ? "Why it worked" : "Caption"}
+              {curated ? "Why it worked" : "Caption"}
             </span>
 
             {/* Transparent hit area on top — keeps the whole thumbnail tappable
@@ -115,19 +121,33 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <h3 className="text-sm font-semibold leading-snug">{post.topic}</h3>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Eye className="h-3.5 w-3.5" aria-hidden />
-            {formatCompact(post.views)}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Heart className="h-3.5 w-3.5" aria-hidden />
-            {formatCompact(post.likes)}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <MessageCircle className="h-3.5 w-3.5" aria-hidden />
-            {formatCompact(post.comments)}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3.5 w-3.5" aria-hidden />
+              {formatCompact(post.views)}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Heart className="h-3.5 w-3.5" aria-hidden />
+              {formatCompact(post.likes)}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <MessageCircle className="h-3.5 w-3.5" aria-hidden />
+              {formatCompact(post.comments)}
+            </span>
+          </div>
+          {post.permalink && (
+            <a
+              href={post.permalink}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`View ${label} on ${post.platform === "tiktok" ? "TikTok" : "Instagram"}`}
+              className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:underline"
+            >
+              View post
+              <ExternalLink className="h-3 w-3" aria-hidden />
+            </a>
+          )}
         </div>
       </div>
 
