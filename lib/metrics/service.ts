@@ -15,6 +15,7 @@ import {
   getLatestSnapshots,
   getMetricOverride,
   getFeaturedSocialPosts,
+  getCatalogStats,
   type SocialSnapshotRow,
   type MetricOverrideRow,
   type SocialPostRow,
@@ -109,6 +110,27 @@ export async function getAccountMetrics(): Promise<MetricsResult<AccountMetrics>
       const computed = computeFromSnapshots(snapshots);
       base = computed.metrics;
       asOf = computed.asOf;
+    }
+
+    // Best video + videos-above-threshold come from the FULL post catalog, not
+    // the snapshot: the snapshot only sees the recent fetch window, so once a
+    // backfill has run it badly under-reports all-time stats. Admin overrides
+    // still win over this (applied below).
+    const effectiveThreshold =
+      override?.notable_views_threshold ??
+      base?.notableViewsThreshold ??
+      FALLBACK_ACCOUNT_METRICS.notableViewsThreshold;
+    const catalog = await getCatalogStats(effectiveThreshold);
+    if (catalog) {
+      const seed = base ?? FALLBACK_ACCOUNT_METRICS;
+      base = {
+        ...seed,
+        notableViewsThreshold: effectiveThreshold,
+        // Keep the prior value if the catalog has no view data yet (e.g. a
+        // list crawl ran but insights haven't been backfilled).
+        bestVideoViews: catalog.maxViews > 0 ? catalog.maxViews : seed.bestVideoViews,
+        videosAboveThreshold: catalog.countAtOrAbove,
+      };
     }
 
     if (override && overrideHasValue(override)) {

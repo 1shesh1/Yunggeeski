@@ -503,6 +503,30 @@ export async function markPostsBackfilled(ids: string[]): Promise<void> {
   await client.from("social_posts").update({ views_backfilled: true }).in("id", ids);
 }
 
+/**
+ * All-time stats derived from the FULL post catalog rather than the latest
+ * snapshot (which only sees the recent fetch window and therefore under-reports
+ * once a backfill has run). Returns null when there are no posts at all.
+ */
+export async function getCatalogStats(
+  threshold: number,
+): Promise<{ maxViews: number; countAtOrAbove: number; total: number } | null> {
+  const client = getSupabase();
+  if (!client) return null;
+  const [maxRes, aboveRes, totalRes] = await Promise.all([
+    client.from("social_posts").select("views").order("views", { ascending: false }).limit(1),
+    client.from("social_posts").select("id", { count: "exact", head: true }).gte("views", threshold),
+    client.from("social_posts").select("id", { count: "exact", head: true }),
+  ]);
+  const total = totalRes.count ?? 0;
+  if (total === 0) return null;
+  return {
+    maxViews: (maxRes.data?.[0]?.views as number | undefined) ?? 0,
+    countAtOrAbove: aboveRes.count ?? 0,
+    total,
+  };
+}
+
 export async function countBackfillRemaining(
   platform: "instagram" | "tiktok",
   likeFloor: number,
