@@ -3,9 +3,11 @@
 import { useState } from "react";
 
 /**
- * Client logo for a case study. Rendered on a light chip so dark-text logos stay
- * legible against the dark page. Falls back to the client name if the asset is
- * missing or fails to load, so the section never breaks.
+ * Client logo for a case study, rendered directly on the page background with no
+ * container. Note: a logo whose own artwork is dark needs a reversed (light)
+ * variant to read against the dark page — the file itself supplies whatever
+ * background it has. Falls back to the client name if the asset is missing or
+ * fails to load, so the section never breaks.
  */
 export function CaseStudyLogo({ src, client }: { src?: string | null; client: string }) {
   const [failed, setFailed] = useState(false);
@@ -15,14 +17,12 @@ export function CaseStudyLogo({ src, client }: { src?: string | null; client: st
   }
 
   return (
-    <span className="inline-flex items-center justify-center rounded-2xl bg-white px-6 py-4 shadow-sm">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={`${client} logo`}
-        className="h-12 w-auto max-w-[240px] object-contain sm:h-14"
-        onError={() => setFailed(true)}
-      />
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={`${client} logo`}
+      className="h-14 w-auto max-w-[280px] object-contain sm:h-16"
+      onError={() => setFailed(true)}
+    />
   );
 }
