@@ -46,3 +46,6 @@ Thumbs.db
 *.pack
 *.pack.gz
 *.idx
+
+# WSL/Windows alternate-data-stream artifacts
+*:Zone.Identifier
