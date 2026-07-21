@@ -7,7 +7,15 @@
  * platform insights before treating it as public-facing truth.
  */
 
-import type { AccountMetrics, PortfolioPost } from "./types";
+import type { AccountMetrics, Platform, PortfolioPost } from "./types";
+
+/**
+ * Platforms the fallback figures represent. Only Instagram is synced today, so
+ * the page attributes the numbers to Instagram alone. Once TikTok snapshots
+ * start landing, the live path derives this from the snapshots themselves and
+ * the attribution updates without a copy change.
+ */
+export const FALLBACK_PLATFORMS: Platform[] = ["instagram"];
 
 export const FALLBACK_ACCOUNT_METRICS: AccountMetrics = {
   totalFollowers: 60_000,
@@ -21,7 +29,7 @@ export const FALLBACK_ACCOUNT_METRICS: AccountMetrics = {
 export const FALLBACK_PORTFOLIO: PortfolioPost[] = [
   {
     id: "pelosi-vs-buffett",
-    platform: "cross",
+    platform: "instagram",
     topic: "Pelosi vs Buffett",
     whyItWorked:
       "A familiar-name matchup turned a returns comparison into a story people wanted to settle.",
@@ -32,7 +40,7 @@ export const FALLBACK_PORTFOLIO: PortfolioPost[] = [
   },
   {
     id: "real-cost-of-takeout",
-    platform: "cross",
+    platform: "instagram",
     topic: "Real Cost of Takeout",
     whyItWorked:
       "Reframed an everyday habit as a decades-long compounding decision — instantly personal.",
@@ -43,7 +51,7 @@ export const FALLBACK_PORTFOLIO: PortfolioPost[] = [
   },
   {
     id: "doctor-wealth-illusion",
-    platform: "cross",
+    platform: "instagram",
     topic: "Doctor Wealth Illusion",
     whyItWorked:
       "Challenged a status assumption (high income ≠ wealth) that viewers felt compelled to debate.",
@@ -54,7 +62,7 @@ export const FALLBACK_PORTFOLIO: PortfolioPost[] = [
   },
   {
     id: "mortgage-illusion",
-    platform: "cross",
+    platform: "instagram",
     topic: "Mortgage Illusion",
     whyItWorked:
       "Exposed how little early payments touch principal — a counterintuitive reveal that drives saves.",
@@ -65,7 +73,7 @@ export const FALLBACK_PORTFOLIO: PortfolioPost[] = [
   },
   {
     id: "real-estate-vs-sp500",
-    platform: "cross",
+    platform: "instagram",
     topic: "Real Estate vs S&P 500",
     whyItWorked:
       "A perennial argument with no settled answer — the chart gave both camps ammunition to comment.",
@@ -76,7 +84,7 @@ export const FALLBACK_PORTFOLIO: PortfolioPost[] = [
   },
   {
     id: "gold-vs-inflation",
-    platform: "cross",
+    platform: "instagram",
     topic: "Gold vs Inflation",
     whyItWorked:
       "Tested gold's 'inflation hedge' reputation against the data — surprised the audience that trusts it.",

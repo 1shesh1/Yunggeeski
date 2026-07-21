@@ -9,8 +9,8 @@
  * Any read error degrades to fixtures rather than blanking the page.
  */
 
-import type { AccountMetrics, MetricsResult, PortfolioPost } from "./types";
-import { FALLBACK_ACCOUNT_METRICS, FALLBACK_PORTFOLIO } from "./fixtures";
+import type { AccountMetrics, MetricsResult, Platform, PortfolioPost } from "./types";
+import { FALLBACK_ACCOUNT_METRICS, FALLBACK_PLATFORMS, FALLBACK_PORTFOLIO } from "./fixtures";
 import {
   getLatestSnapshots,
   getMetricOverride,
@@ -104,6 +104,12 @@ export async function getAccountMetrics(): Promise<MetricsResult<AccountMetrics>
   try {
     const [snapshots, override] = await Promise.all([getLatestSnapshots(), getMetricOverride()]);
 
+    // Attribute the headline figures to the platforms that actually reported.
+    // With only Instagram synced today this reads "Instagram"; it widens on its
+    // own once TikTok snapshots land, with no copy change needed.
+    const platforms: Platform[] =
+      snapshots.length > 0 ? snapshots.map((s) => s.platform) : FALLBACK_PLATFORMS;
+
     let base: AccountMetrics | null = null;
     let asOf: string | null = null;
     if (snapshots.length > 0) {
@@ -135,17 +141,32 @@ export async function getAccountMetrics(): Promise<MetricsResult<AccountMetrics>
 
     if (override && overrideHasValue(override)) {
       const merged = applyOverride(base ?? FALLBACK_ACCOUNT_METRICS, override);
-      return { data: merged, source: "override", asOf: base ? asOf : override.updated_at };
+      return {
+        data: merged,
+        source: "override",
+        asOf: base ? asOf : override.updated_at,
+        platforms,
+      };
     }
 
     if (base) {
-      return { data: base, source: "snapshot", asOf };
+      return { data: base, source: "snapshot", asOf, platforms };
     }
 
-    return { data: FALLBACK_ACCOUNT_METRICS, source: "fallback", asOf: null };
+    return {
+      data: FALLBACK_ACCOUNT_METRICS,
+      source: "fallback",
+      asOf: null,
+      platforms: FALLBACK_PLATFORMS,
+    };
   } catch (e) {
     console.error("[metrics] getAccountMetrics failed, using fallback:", e);
-    return { data: FALLBACK_ACCOUNT_METRICS, source: "fallback", asOf: null };
+    return {
+      data: FALLBACK_ACCOUNT_METRICS,
+      source: "fallback",
+      asOf: null,
+      platforms: FALLBACK_PLATFORMS,
+    };
   }
 }
 
