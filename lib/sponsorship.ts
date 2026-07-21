@@ -17,6 +17,12 @@ export interface SponsorPackage {
   /** Short positioning line under the name. */
   tagline: string;
   includes: string[];
+  /**
+   * Qualifying line under the includes list, rendered WITHOUT a checkmark —
+   * every `includes` item gets a ✓ meaning "included at this price", so
+   * anything that is available but not included belongs here instead.
+   */
+  note?: string;
   /** Marks the visually emphasized card. */
   featured?: boolean;
 }
@@ -56,16 +62,17 @@ export const SPONSOR_PACKAGES: SponsorPackage[] = [
   {
     id: "monthly_partner",
     name: "Monthly Content Partner",
-    startingPrice: "Starting at $6,000 / month",
+    startingPrice: "Starting at $6,000 / month for four videos",
     tagline:
       "Ongoing production for brands that need consistent, high-quality financial content.",
     includes: [
-      "Four to eight videos monthly",
+      "Four videos monthly",
       "Research and topic development",
       "Priority production",
       "Monthly performance review",
-      "Optional paid usage rights",
+      "Paid advertising usage rights available separately",
     ],
+    note: "Six-to-eight-video packages available by custom quote.",
   },
 ];
 
