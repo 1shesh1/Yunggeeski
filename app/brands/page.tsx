@@ -203,6 +203,9 @@ export default async function BrandsPage() {
                       </li>
                     ))}
                   </ul>
+                  {pkg.note && (
+                    <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{pkg.note}</p>
+                  )}
                   <Link
                     href="#inquiry"
                     className={
