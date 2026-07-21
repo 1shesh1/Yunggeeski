@@ -17,6 +17,7 @@ import {
   DELTA_OPTIONS_CASE_STUDY,
 } from "@/lib/sponsorship";
 import { formatCompact } from "@/lib/utils";
+import { DonutChart } from "./DonutChart";
 
 // Re-render on the server every 5 minutes so refreshed snapshots and admin
 // overrides reach the live page without a redeploy (the page reads the metrics
@@ -53,8 +54,19 @@ export default async function BrandsPage() {
   const mediaKitAvailable = existsSync(path.join(process.cwd(), "public", MEDIA_KIT_HREF));
   const caseStudy = DELTA_OPTIONS_CASE_STUDY;
   const caseStudyHasResults = caseStudy.results.some((r) => r.value !== null);
-  const caseStudyHighlights = caseStudy.results.filter((r) => r.highlight && r.value !== null);
-  const caseStudyStandard = caseStudy.results.filter((r) => !r.highlight);
+  // Charts are the preferred rendering; the raw-number grid stays as the
+  // fallback for a case study that hasn't had charts defined yet.
+  const caseStudyCharts = caseStudy.charts ?? [];
+  // Attribute the headline figures to the platforms that reported them, so a
+  // combined-looking row is never read as more than it is. Derived, not
+  // hardcoded — it widens on its own when TikTok starts syncing.
+  const PLATFORM_LABELS: Record<string, string> = { instagram: "Instagram", tiktok: "TikTok" };
+  const platformNames = (metricsResult.platforms ?? []).map((p) => PLATFORM_LABELS[p] ?? p);
+  const platformLabel =
+    platformNames.length > 0
+      ? new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(platformNames)
+      : null;
+
   const asOfNote = metricsResult.asOf
     ? `As of ${new Date(metricsResult.asOf).toLocaleDateString("en-US", {
         month: "short",
@@ -105,7 +117,7 @@ export default async function BrandsPage() {
               </Link>
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatCompact(m.totalFollowers)}+ followers
+              {formatCompact(m.totalFollowers)}+ {platformLabel ?? ""} followers
               &nbsp;&nbsp;·&nbsp;&nbsp;Multiple videos above{" "}
               {formatCompact(m.notableViewsThreshold)} views
               &nbsp;&nbsp;·&nbsp;&nbsp;{formatCompact(m.monthlyReach)}+ views in 30 days
@@ -126,6 +138,7 @@ export default async function BrandsPage() {
             </h2>
             <p className="mx-auto mb-10 max-w-lg text-center text-sm text-muted-foreground">
               Reach and engagement built on finance and business content — not vanity views.
+              {platformLabel && <> All figures below are {platformLabel} only.</>}
             </p>
 
             {/* Metric row */}
@@ -257,35 +270,35 @@ export default async function BrandsPage() {
             {/* Results — gated: only render the metric grid once verified numbers exist,
                 otherwise a clean placeholder instead of a row of em-dashes. */}
             <div className="mt-5 rounded-2xl border border-border bg-card p-6">
-              <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-secondary">
+              <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-secondary">
                 Results
               </h3>
               {caseStudyHasResults ? (
                 <>
-                  {caseStudyHighlights.length > 0 && (
-                    <div className="mb-4 grid gap-4 sm:grid-cols-2">
-                      {caseStudyHighlights.map((r) => (
-                        <div
-                          key={r.label}
-                          className="rounded-xl border border-secondary/30 bg-secondary/5 px-4 py-5 text-center"
-                        >
-                          <p className="text-3xl font-bold text-secondary">{r.value}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
-                        </div>
+                  {caseStudy.resultsScope && (
+                    <p className="mb-4 text-xs text-muted-foreground">{caseStudy.resultsScope}</p>
+                  )}
+                  {caseStudyCharts.length > 0 ? (
+                    <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                      {caseStudyCharts.map((chart) => (
+                        <DonutChart key={chart.id} chart={chart} />
                       ))}
                     </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                      {caseStudy.results
+                        .filter((r) => r.value !== null)
+                        .map((r) => (
+                          <div
+                            key={r.label}
+                            className="rounded-xl border border-border/60 bg-background/40 px-4 py-4 text-center"
+                          >
+                            <p className="text-lg font-bold text-foreground">{r.value}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
+                          </div>
+                        ))}
+                    </div>
                   )}
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                    {caseStudyStandard.map((r) => (
-                      <div
-                        key={r.label}
-                        className="rounded-xl border border-border/60 bg-background/40 px-4 py-4 text-center"
-                      >
-                        <p className="text-lg font-bold text-foreground">{r.value ?? "—"}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
-                      </div>
-                    ))}
-                  </div>
                 </>
               ) : (
                 <p className="py-4 text-center text-sm text-muted-foreground">

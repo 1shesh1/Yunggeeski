@@ -121,6 +121,30 @@ export interface CaseStudyResult {
   highlight?: boolean;
 }
 
+export interface CaseStudyChartSegment {
+  label: string;
+  value: number;
+}
+
+/**
+ * A part-to-whole donut in the case-study results. `total` is the full ring;
+ * `segments` fill it in order. When the segments sum to less than `total` the
+ * shortfall renders as a muted remainder track (labelled by `remainderLabel`).
+ */
+export interface CaseStudyChart {
+  id: string;
+  title: string;
+  /** Name of the metric forming the whole ring. */
+  totalLabel: string;
+  total: number;
+  segments: CaseStudyChartSegment[];
+  remainderLabel?: string;
+  /** Plain-language reading of the chart, shown beneath it. */
+  caption?: string;
+  /** Standalone stat rendered under the donut (e.g. tracked link clicks). */
+  footStat?: { label: string; value: string };
+}
+
 export interface CaseStudy {
   slug: string;
   client: string;
@@ -129,7 +153,12 @@ export interface CaseStudy {
   objective: string;
   approach: string;
   deliverables: string[];
+  /** Data of record for the campaign. Also gates the results section. */
   results: CaseStudyResult[];
+  /** Visual breakdown of `results`. Both read from the same raw numbers. */
+  charts?: CaseStudyChart[];
+  /** Scoping note for the results — platform and volume the numbers cover. */
+  resultsScope?: string;
   /** One-line takeaway shown as a callout under the results. */
   keyResult?: string;
   /** Sponsorship disclosure line. */
@@ -137,6 +166,27 @@ export interface CaseStudy {
   /** Comment-section proof screenshots (public/ paths). Empty until assets land. */
   screenshots: string[];
 }
+
+const fmt = (n: number) => n.toLocaleString("en-US");
+
+/**
+ * Raw verified figures for the Delta Options campaign, declared once so the
+ * results list and the donut charts can never drift apart. Instagram-only,
+ * aggregated across the 6 sponsored Reels.
+ */
+const DELTA_METRICS = {
+  optionComments: 292,
+  linkClicks: 193,
+  views: 103_581,
+  accountsReached: 73_182,
+  saves: 863,
+  likes: 687,
+  comments: 451,
+  shares: 308,
+} as const;
+
+const DELTA_TOTAL_ENGAGEMENT =
+  DELTA_METRICS.saves + DELTA_METRICS.likes + DELTA_METRICS.comments + DELTA_METRICS.shares;
 
 export const DELTA_OPTIONS_CASE_STUDY: CaseStudy = {
   slug: "delta-options",
@@ -153,17 +203,66 @@ export const DELTA_OPTIONS_CASE_STUDY: CaseStudy = {
     "Integrated “OPTION” comment CTA",
   ],
   results: [
-    { label: "“OPTION” comments", value: "292", highlight: true },
-    { label: "Link clicks", value: "193", highlight: true },
-    { label: "Views", value: "103,581" },
-    { label: "Accounts reached", value: "73,182" },
-    { label: "Saves", value: "863" },
-    { label: "Likes", value: "687" },
-    { label: "Comments", value: "451" },
-    { label: "Shares", value: "308" },
+    {
+      label: "“OPTION” comments",
+      value: fmt(DELTA_METRICS.optionComments),
+      highlight: true,
+    },
+    {
+      label: "Link clicks",
+      value: fmt(DELTA_METRICS.linkClicks),
+      highlight: true,
+    },
+    { label: "Views", value: fmt(DELTA_METRICS.views) },
+    { label: "Accounts reached", value: fmt(DELTA_METRICS.accountsReached) },
+    { label: "Saves", value: fmt(DELTA_METRICS.saves) },
+    { label: "Likes", value: fmt(DELTA_METRICS.likes) },
+    { label: "Comments", value: fmt(DELTA_METRICS.comments) },
+    { label: "Shares", value: fmt(DELTA_METRICS.shares) },
   ],
-  keyResult:
-    "The campaign generated approximately 292 direct “OPTION” responses — measurable audience intent, not passive viewership.",
+  charts: [
+    {
+      id: "reach",
+      title: "Views vs. accounts reached",
+      totalLabel: "Views",
+      total: DELTA_METRICS.views,
+      segments: [{ label: "Accounts reached", value: DELTA_METRICS.accountsReached }],
+      remainderLabel: "Repeat views",
+      caption: `${fmt(DELTA_METRICS.accountsReached)} unique accounts generated ${fmt(
+        DELTA_METRICS.views,
+      )} views.`,
+    },
+    {
+      id: "engagement",
+      title: "Engagement mix",
+      totalLabel: "Total engagements",
+      total: DELTA_TOTAL_ENGAGEMENT,
+      segments: [
+        { label: "Saves", value: DELTA_METRICS.saves },
+        { label: "Likes", value: DELTA_METRICS.likes },
+        { label: "Comments", value: DELTA_METRICS.comments },
+        { label: "Shares", value: DELTA_METRICS.shares },
+      ],
+      caption: "Saves led the mix — the strongest signal of intent to return to a post.",
+    },
+    {
+      id: "cta-response",
+      title: "“OPTION” share of comments",
+      totalLabel: "Comments",
+      total: DELTA_METRICS.comments,
+      segments: [{ label: "“OPTION” comments", value: DELTA_METRICS.optionComments }],
+      remainderLabel: "Other comments",
+      caption: "Most comments were the campaign CTA keyword, not passive reactions.",
+      footStat: {
+        label: "Link clicks tracked",
+        value: fmt(DELTA_METRICS.linkClicks),
+      },
+    },
+  ],
+  resultsScope: "Instagram-only metrics, aggregated across 6 sponsored Reels.",
+  keyResult: `The campaign generated approximately ${fmt(
+    DELTA_METRICS.optionComments,
+  )} direct “OPTION” responses — measurable audience intent, not passive viewership.`,
   disclosure: "Sponsored content was clearly disclosed.",
   screenshots: [],
 };

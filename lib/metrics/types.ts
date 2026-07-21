@@ -59,6 +59,12 @@ export interface MetricsResult<T> {
   source: MetricSource;
   /** ISO timestamp of the underlying snapshot, or null for static fallback. */
   asOf: string | null;
+  /**
+   * Platforms that actually contributed to `data`, so the UI can attribute the
+   * figures honestly (today: Instagram only). Absent for reads where platform
+   * attribution is not meaningful.
+   */
+  platforms?: Platform[];
 }
 
 /** Default "notable views" threshold for counting standout videos. */
