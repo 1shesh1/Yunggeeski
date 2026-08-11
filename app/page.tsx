@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Check, X, ArrowRight, BookOpen, BarChart2, Zap } from "lucide-react";
 import { CourseWorkflowPricingGrid } from "@/components/CourseWorkflowPricingGrid";
+import { SocialProofSection } from "@/components/SocialProofSection";
 import { StickyCtaBanner } from "@/components/StickyCtaBanner";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { cn } from "@/lib/utils";
@@ -352,6 +353,9 @@ export default function WorkflowPage() {
             </div>
           </div>
         </section>
+
+        {/* ── SOCIAL PROOF ── */}
+        <SocialProofSection />
 
         {/* ── PRICING ── */}
         <section id="pricing" className="py-20 px-4 bg-card/30 scroll-mt-4">
