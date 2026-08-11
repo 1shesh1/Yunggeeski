@@ -52,7 +52,7 @@ export const SOCIAL_PROOF_REPOSTS: SocialProofRepost[] = [
     quote: "Wow. Great chart @yunggeeski_ 💯",
     screenshot: "/images/social-proof/lara-trump.png",
     width: 960,
-    height: 2079,
+    height: 1697,
     alt: "Instagram post by laraleatrump showing the Inflation by Presidency chart, captioned “Wow. Great chart @yunggeeski_”",
   },
   {
@@ -81,7 +81,7 @@ export const SOCIAL_PROOF_REPOSTS: SocialProofRepost[] = [
     action: "Reposted with credit",
     screenshot: "/images/social-proof/mandy-patinkin.png",
     width: 960,
-    height: 2079,
+    height: 1517,
     alt: "Instagram reel by mandypatinkin reposting the “Which Political Party Grew the Debt More?” chart from @yunggeeski_",
   },
 ];

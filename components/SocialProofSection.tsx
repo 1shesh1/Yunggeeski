@@ -16,12 +16,14 @@ import {
 } from "@/components/ui/dialog";
 
 /**
- * The card box is the tallest source ratio (the phone captures, 960×2079) and
- * images are `object-contain`, so every screenshot is shown whole — nothing is
- * cropped. The shorter desktop capture letterboxes against the black backdrop,
- * which is near-invisible given the screenshots are themselves dark.
+ * The card box is the tallest source ratio (Lara Trump's, 960×1697) and images
+ * are `object-contain`, so every screenshot is shown whole — nothing is
+ * cropped. Shorter captures letterbox against the black backdrop, which is
+ * near-invisible given the screenshots are themselves dark. Keep this in sync
+ * with the tallest entry in SOCIAL_PROOF_REPOSTS: set it shorter and that
+ * screenshot shrinks to fit; set it taller and all three gain dead space.
  */
-const CARD_ASPECT = "aspect-[960/2079]";
+const CARD_ASPECT = "aspect-[960/1697]";
 
 /**
  * One repost: the complete screenshot, which opens larger on click, plus the

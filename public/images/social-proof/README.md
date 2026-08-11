@@ -4,9 +4,9 @@ Repost screenshots shown in the "Social Proof" section on the home page.
 
 Expected files (referenced from `lib/socialProof.ts`):
 
-- `lara-trump.png` — Instagram post by @laraleatrump — 960×2079
+- `lara-trump.png` — Instagram post by @laraleatrump — 960×1697
 - `donald-trump.png` — Truth Social repost by @realDonaldTrump — 877×1546
-- `mandy-patinkin.png` — Instagram reel by @mandypatinkin — 960×2079
+- `mandy-patinkin.png` — Instagram reel by @mandypatinkin — 960×1517
 
 Notes:
 
@@ -17,9 +17,13 @@ Notes:
   placeholder showing the chart title; drop the PNG in at the path above and it
   swaps itself in with no code change.
 - **Screenshots are shown whole — nothing is cropped.** The card box is the
-  tallest source ratio (960×2079) and images are `object-contain`, so a shorter
-  capture letterboxes against the black backdrop rather than losing content.
-  Clicking a card opens the screenshot larger in a modal.
+  tallest source ratio and images are `object-contain`, so a shorter capture
+  letterboxes against the black backdrop rather than losing content. Clicking a
+  card opens the screenshot larger in a modal.
+- If you add a screenshot taller than the current tallest, update `CARD_ASPECT`
+  in `components/SocialProofSection.tsx` to match, or it will be shrunk to fit.
+- Crop phone chrome (status bar, nav bar) out before committing — it adds height
+  that pushes every card taller without adding any proof.
 - Because of that, a much wider screenshot would letterbox heavily and read as
   small. Prefer portrait captures at roughly phone proportions.
 - Served through `next/image`, so delivery is resized and converted to WebP
