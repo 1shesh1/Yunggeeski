@@ -49,7 +49,7 @@ export function InquirySection({
   mediaKitHref?: string | null;
 }) {
   return (
-    <section id={INQUIRY_ANCHOR} className="scroll-mt-44 px-4 py-20 md:scroll-mt-24">
+    <section id={INQUIRY_ANCHOR} className="scroll-mt-24 px-4 py-20">
       <div className="container mx-auto max-w-2xl">
         <p className={eyebrow}>Request a Campaign</p>
         <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl">{heading}</h2>
