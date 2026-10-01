@@ -308,6 +308,22 @@ export async function getFeaturedSocialPosts(limit = 6): Promise<SocialPostRow[]
   return (data ?? []) as SocialPostRow[];
 }
 
+/**
+ * Posts whose permalink contains any of the given shortcodes (IG reel codes
+ * contain only [A-Za-z0-9_-], so they're safe inside a PostgREST filter).
+ */
+export async function getSocialPostsByShortcodes(codes: string[]): Promise<SocialPostRow[]> {
+  const client = getSupabase();
+  const safe = codes.filter((c) => /^[A-Za-z0-9_-]+$/.test(c));
+  if (!client || safe.length === 0) return [];
+  const { data, error } = await client
+    .from("social_posts")
+    .select("*")
+    .or(safe.map((c) => `permalink.ilike.*${c}*`).join(","));
+  if (error) return [];
+  return (data ?? []) as SocialPostRow[];
+}
+
 /** All posts, for the admin management view. */
 export async function listSocialPosts(): Promise<SocialPostRow[]> {
   const client = getSupabase();

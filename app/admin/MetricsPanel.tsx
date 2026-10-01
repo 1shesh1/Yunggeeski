@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { postShortcode } from "@/lib/portfolio";
 import {
   Select,
   SelectContent,
@@ -95,6 +96,7 @@ export function MetricsPanel() {
   const [postError, setPostError] = useState<string | null>(null);
   const [savingPost, setSavingPost] = useState(false);
   const [sortBy, setSortBy] = useState<"curated" | "views">("curated");
+  const [search, setSearch] = useState("");
   const [backfilling, setBackfilling] = useState(false);
   const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
@@ -261,8 +263,16 @@ export function MetricsPanel() {
   if (loading) return <p className="text-muted-foreground">Loading…</p>;
 
   const featuredCount = posts.filter((p) => p.is_featured).length;
+  // Untitled synced posts have no topic or caption, so search also matches the
+  // permalink — paste a reel link or just its code to find one.
+  const query = search.trim().toLowerCase();
+  const filteredPosts = query
+    ? posts.filter((p) =>
+        [p.topic, p.caption, p.permalink].some((v) => v?.toLowerCase().includes(query)),
+      )
+    : posts;
   const sortedPosts =
-    sortBy === "views" ? [...posts].sort((a, b) => b.views - a.views) : posts;
+    sortBy === "views" ? [...filteredPosts].sort((a, b) => b.views - a.views) : filteredPosts;
 
   return (
     <div className="space-y-8">
@@ -468,7 +478,14 @@ export function MetricsPanel() {
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold text-muted-foreground">All posts ({posts.length})</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search title, caption, or reel link"
+              aria-label="Search posts"
+              className="h-8 w-[240px]"
+            />
             <span className="text-xs text-muted-foreground">Sort</span>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as "curated" | "views")}>
               <SelectTrigger className="h-8 w-[130px]">
@@ -493,6 +510,8 @@ export function MetricsPanel() {
         {backfillMsg && <p className="text-xs text-muted-foreground">{backfillMsg}</p>}
         {posts.length === 0 ? (
           <p className="text-sm text-muted-foreground">No posts yet.</p>
+        ) : sortedPosts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No posts match “{search.trim()}”.</p>
         ) : (
           sortedPosts.map((p) => (
             <div
@@ -509,8 +528,15 @@ export function MetricsPanel() {
                   {p.topic || p.caption || "(untitled)"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {p.platform} · {p.views.toLocaleString()} views · {p.likes.toLocaleString()} likes ·
-                  sort {p.sort_order}
+                  {p.platform}
+                  {postShortcode(p.permalink) && (
+                    <>
+                      {" "}
+                      · <span className="font-mono">{postShortcode(p.permalink)}</span>
+                    </>
+                  )}{" "}
+                  · {p.views.toLocaleString()} views · {p.likes.toLocaleString()} likes · sort{" "}
+                  {p.sort_order}
                 </p>
               </div>
               {p.permalink && (

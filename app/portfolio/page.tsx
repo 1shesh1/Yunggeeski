@@ -5,7 +5,7 @@ import { PortfolioCarousel } from "@/components/brands/PortfolioCarousel";
 import { CaseStudyLogo } from "@/components/brands/CaseStudyLogo";
 import { InquirySection } from "@/components/brands/sections";
 import { INQUIRY_HREF, eyebrow, primaryCta } from "@/components/brands/styles";
-import { getAccountMetrics, getFeaturedPortfolio } from "@/lib/metrics/service";
+import { getAccountMetrics, getPortfolioShowcase } from "@/lib/metrics/service";
 import { DELTA_OPTIONS_CASE_STUDY, DELTA_OPTIONS_HIGHLIGHTS } from "@/lib/sponsorship";
 import { formatCompact } from "@/lib/utils";
 
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     "The best-performing finance charts from Yung Geeski, with live engagement metrics and the reasoning behind why each one worked.",
 };
 
-/** Upper bound on posts shown; the admin-featured list decides which and in what order. */
+/** Upper bound on posts shown: admin-featured first, then lib/portfolio.ts PINNED_PORTFOLIO. */
 const PORTFOLIO_LIMIT = 12;
 
 /**
@@ -28,7 +28,7 @@ const PORTFOLIO_LIMIT = 12;
  */
 export default async function PortfolioPage() {
   const [portfolioResult, metricsResult] = await Promise.all([
-    getFeaturedPortfolio(PORTFOLIO_LIMIT),
+    getPortfolioShowcase(PORTFOLIO_LIMIT),
     getAccountMetrics(),
   ]);
   const posts = portfolioResult.data;
@@ -43,7 +43,7 @@ export default async function PortfolioPage() {
     { views: 0, likes: 0, comments: 0 },
   );
   const aggregate: { label: string; value: string }[] = [
-    { label: `Views across these ${posts.length} posts`, value: formatCompact(totals.views) },
+    { label: "Combined views", value: `${formatCompact(totals.views)}+` },
     { label: "Likes", value: formatCompact(totals.likes) },
     { label: "Comments", value: formatCompact(totals.comments) },
     { label: "Followers", value: `${formatCompact(m.totalFollowers)}+` },

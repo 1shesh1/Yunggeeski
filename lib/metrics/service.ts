@@ -15,12 +15,13 @@ import {
   getLatestSnapshots,
   getMetricOverride,
   getFeaturedSocialPosts,
+  getSocialPostsByShortcodes,
   getCatalogStats,
   type SocialSnapshotRow,
   type MetricOverrideRow,
   type SocialPostRow,
 } from "@/lib/supabase";
-import { portfolioVideoPath } from "@/lib/portfolio";
+import { PINNED_PORTFOLIO, portfolioVideoPath, postShortcode } from "@/lib/portfolio";
 
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
@@ -209,4 +210,43 @@ export async function getFeaturedPortfolio(limit = 6): Promise<MetricsResult<Por
     console.error("[metrics] getFeaturedPortfolio failed, using fallback:", e);
     return { data: FALLBACK_PORTFOLIO.slice(0, limit), source: "fallback", asOf: null };
   }
+}
+
+/**
+ * The /portfolio showcase: admin-featured posts, then the code-pinned ones
+ * (PINNED_PORTFOLIO) that aren't already featured. A pinned post that has a DB
+ * row takes that row's live metrics, keeping the pinned copy where the row's
+ * curated fields are empty.
+ */
+export async function getPortfolioShowcase(limit = 12): Promise<MetricsResult<PortfolioPost[]>> {
+  const featured = await getFeaturedPortfolio(limit);
+  const shown = new Set(featured.data.map((p) => postShortcode(p.permalink)).filter(Boolean));
+  const pinned = PINNED_PORTFOLIO.filter((p) => !shown.has(postShortcode(p.permalink)));
+  if (pinned.length === 0) return featured;
+
+  let rows: SocialPostRow[] = [];
+  try {
+    rows = await getSocialPostsByShortcodes(
+      pinned.map((p) => postShortcode(p.permalink)).filter((c): c is string => Boolean(c)),
+    );
+  } catch (e) {
+    console.error("[metrics] pinned post lookup failed, using pinned figures:", e);
+  }
+  const byCode = new Map(rows.map((r) => [postShortcode(r.permalink), r]));
+
+  const extras = pinned.map((p): PortfolioPost => {
+    const row = byCode.get(postShortcode(p.permalink));
+    if (!row) return p;
+    const live = mapRow(row);
+    return {
+      ...live,
+      topic: live.topic?.trim() ? live.topic : p.topic,
+      whyItWorked: live.whyItWorked?.trim() ? live.whyItWorked : p.whyItWorked,
+      caption: live.caption ?? p.caption,
+      // Synced rows can lack views (list crawl without insights).
+      views: live.views > 0 ? live.views : p.views,
+    };
+  });
+
+  return { ...featured, data: [...featured.data, ...extras].slice(0, limit) };
 }
