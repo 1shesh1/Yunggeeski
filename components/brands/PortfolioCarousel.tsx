@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Eye,
   Heart,
+  Maximize2,
   MessageCircle,
   Send,
   Volume2,
@@ -19,6 +20,7 @@ import type { PortfolioPost } from "@/lib/metrics/types";
 import { formatCompact, cn } from "@/lib/utils";
 import { clip, hasViews, platformName, postTitle } from "@/lib/portfolio";
 import { PostMedia } from "./PostMedia";
+import { PostLightbox } from "./PostLightbox";
 
 const SWIPE_PX = 50;
 
@@ -47,7 +49,8 @@ const SLOT_STYLE: Record<number, CSSProperties> = {
 /**
  * One-at-a-time showcase of portfolio posts. The neighbours peek out behind the
  * active slide (paused, dimmed, clickable); only the active video plays.
- * Navigable by clicking a neighbour, the arrows, swipe, and ←/→ keys.
+ * Navigable by clicking a neighbour, the arrows, swipe, and ←/→ keys. Clicking
+ * the active video opens it near-full-screen (PostLightbox).
  */
 export function PortfolioCarousel({
   posts,
@@ -59,6 +62,7 @@ export function PortfolioCarousel({
   const [index, setIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const [expanded, setExpanded] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const touchX = useRef<number | null>(null);
 
   const count = posts.length;
@@ -88,6 +92,7 @@ export function PortfolioCarousel({
   if (post.saves != null) stats.push({ icon: Bookmark, label: "Saves", value: formatCompact(post.saves) });
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (lightboxOpen) return; // the lightbox handles its own arrows
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       go(index - 1);
@@ -145,10 +150,28 @@ export function PortfolioCarousel({
                       : "border-border/50 opacity-60 brightness-50 grayscale-[.4]",
                   )}
                 >
-                  <PostMedia post={p} playing={active} muted={active ? muted : true} />
+                  <PostMedia
+                    post={p}
+                    playing={active && !lightboxOpen}
+                    muted={active ? muted : true}
+                  />
 
                   {active ? (
                     <>
+                      {p.videoUrl && (
+                        <>
+                          {/* Whole-video hit area → full-screen player. */}
+                          <button
+                            type="button"
+                            onClick={() => setLightboxOpen(true)}
+                            aria-label={`Play ${postTitle(p)} full screen`}
+                            className="absolute inset-0 cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary"
+                          />
+                          <span className="pointer-events-none absolute bottom-3 left-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm">
+                            <Maximize2 className="h-4 w-4" aria-hidden />
+                          </span>
+                        </>
+                      )}
                       {hasViews(p) && (
                         <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                           {formatCompact(p.views)} views
@@ -159,7 +182,7 @@ export function PortfolioCarousel({
                           type="button"
                           onClick={() => setMuted((m) => !m)}
                           aria-label={muted ? "Unmute video" : "Mute video"}
-                          className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm transition-colors hover:bg-black/90"
+                          className="absolute bottom-3 right-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm transition-colors hover:bg-black/90"
                         >
                           {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                         </button>
@@ -264,6 +287,14 @@ export function PortfolioCarousel({
           </a>
         )}
       </div>
+
+      <PostLightbox
+        posts={posts}
+        index={index}
+        open={lightboxOpen}
+        onOpenChange={setLightboxOpen}
+        onNavigate={(delta) => go(index + delta)}
+      />
     </div>
   );
 }
