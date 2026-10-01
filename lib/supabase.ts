@@ -388,10 +388,13 @@ export async function deleteSocialPost(id: string): Promise<boolean> {
   return !error;
 }
 
-/** Upsert an API-sourced post keyed on the unique (platform, external_id) index.
- * The payload omits admin-curated columns (topic, why_it_worked, is_featured,
- * sort_order) so ON CONFLICT preserves them; new rows get their DB defaults. */
-export async function upsertApiPost(row: {
+/** Last write wins per external_id — Postgres rejects an upsert batch that
+ * touches the same row twice. */
+function uniqueByExternalId<T extends { external_id: string }>(rows: T[]): T[] {
+  return Array.from(new Map(rows.map((r) => [r.external_id, r])).values());
+}
+
+export interface ApiPostWrite {
   platform: "instagram" | "tiktok";
   external_id: string;
   caption?: string | null;
@@ -403,11 +406,19 @@ export async function upsertApiPost(row: {
   shares?: number | null;
   saves?: number | null;
   fetched_at: string;
-}): Promise<void> {
+}
+
+/** Upsert API-sourced posts in ONE request, keyed on the unique (platform,
+ * external_id) index. The payload omits admin-curated columns (topic,
+ * why_it_worked, is_featured, sort_order) so ON CONFLICT preserves them; new
+ * rows get their DB defaults. Batched because one round trip per post is what
+ * pushed the sync past the serverless time limit. */
+export async function upsertApiPosts(rows: ApiPostWrite[]): Promise<void> {
   const client = getSupabase();
-  if (!client) return;
-  await client.from("social_posts").upsert(
-    {
+  if (!client || rows.length === 0) return;
+  const updatedAt = new Date().toISOString();
+  const { error } = await client.from("social_posts").upsert(
+    uniqueByExternalId(rows).map((row) => ({
       platform: row.platform,
       external_id: row.external_id,
       caption: row.caption ?? null,
@@ -419,15 +430,14 @@ export async function upsertApiPost(row: {
       shares: row.shares ?? null,
       saves: row.saves ?? null,
       fetched_at: row.fetched_at,
-      updated_at: new Date().toISOString(),
-    },
+      updated_at: updatedAt,
+    })),
     { onConflict: "platform,external_id" },
   );
+  if (error) throw new Error(`social_posts upsert failed: ${error.message}`);
 }
 
-/** Upsert list-level fields only (no views) — used by the backfill list crawl,
- * where view counts come later from insights. Preserves existing views. */
-export async function upsertListPost(row: {
+export interface ListPostWrite {
   platform: "instagram" | "tiktok";
   external_id: string;
   caption?: string | null;
@@ -436,11 +446,17 @@ export async function upsertListPost(row: {
   likes: number;
   comments: number;
   fetched_at: string;
-}): Promise<void> {
+}
+
+/** Upsert list-level fields only (no views) in ONE request — used by the
+ * backfill list crawl, where view counts come later from insights. Preserves
+ * existing views. */
+export async function upsertListPosts(rows: ListPostWrite[]): Promise<void> {
   const client = getSupabase();
-  if (!client) return;
-  await client.from("social_posts").upsert(
-    {
+  if (!client || rows.length === 0) return;
+  const updatedAt = new Date().toISOString();
+  const { error } = await client.from("social_posts").upsert(
+    uniqueByExternalId(rows).map((row) => ({
       platform: row.platform,
       external_id: row.external_id,
       caption: row.caption ?? null,
@@ -449,10 +465,11 @@ export async function upsertListPost(row: {
       likes: row.likes,
       comments: row.comments,
       fetched_at: row.fetched_at,
-      updated_at: new Date().toISOString(),
-    },
+      updated_at: updatedAt,
+    })),
     { onConflict: "platform,external_id" },
   );
+  if (error) throw new Error(`social_posts upsert failed: ${error.message}`);
 }
 
 /** External IDs to keep re-fetching daily beyond the recent window: the top
