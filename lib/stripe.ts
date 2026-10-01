@@ -162,7 +162,7 @@ export async function createCourseCheckoutSession(
 ): Promise<{ url: string }> {
   const baseUrl = getBaseUrl();
   const successUrl = `${baseUrl}/workflow/access`;
-  const cancelUrl = `${baseUrl}/`;
+  const cancelUrl = `${baseUrl}/workflow`;
 
   if (MOCK_MODE || !getStripe()) {
     return { url: successUrl };

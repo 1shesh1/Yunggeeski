@@ -193,7 +193,7 @@ export async function uploadLogo(orderId: string, file: Buffer, mimeType: string
   return urlData.publicUrl;
 }
 
-// —— Social metrics (/brands live data) ——
+// —— Social metrics (landing page + /portfolio live data) ——
 
 export type SocialPlatform = "instagram" | "tiktok";
 
@@ -293,7 +293,7 @@ export async function insertSnapshot(row: {
   return { ok: true };
 }
 
-/** The featured posts shown on /brands, ordered for display. */
+/** Featured posts for the landing page and /portfolio, ordered for display. */
 export async function getFeaturedSocialPosts(limit = 6): Promise<SocialPostRow[]> {
   const client = getSupabase();
   if (!client) return [];

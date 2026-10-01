@@ -76,7 +76,7 @@ export function getAdminSecret(): string | undefined {
   return getStr("ADMIN_SECRET");
 }
 
-// —— Social metrics (/brands live data; see lib/metrics/*) ——
+// —— Social metrics (landing page + /portfolio live data; see lib/metrics/*) ——
 
 export function getMetricsRefreshSecret(): string | undefined {
   return getStr("METRICS_REFRESH_SECRET");

@@ -11,8 +11,13 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      { source: '/workflow', destination: '/', permanent: true },
-      { source: '/course', destination: '/', permanent: true },
+      // The brands page is now the landing page; the workflow/course page moved
+      // from / to /workflow; the custom-charts storefront was retired.
+      { source: '/brands', destination: '/', permanent: true },
+      { source: '/brands/thanks', destination: '/thanks', permanent: true },
+      { source: '/charts', destination: '/', permanent: true },
+      { source: '/checkout/:tier', destination: '/', permanent: true },
+      { source: '/course', destination: '/workflow', permanent: true },
       { source: '/course/access', destination: '/workflow/access', permanent: true },
     ];
   },

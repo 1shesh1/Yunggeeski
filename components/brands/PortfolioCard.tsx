@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Heart, MessageCircle, Eye, Info, ExternalLink, ArrowRight } from "lucide-react";
+import { Heart, MessageCircle, Eye, Info, ExternalLink, ArrowRight } from "lucide-react";
 import type { PortfolioPost } from "@/lib/metrics/types";
 import { formatCompact, cn } from "@/lib/utils";
+import { clip, platformName, postTitle } from "@/lib/portfolio";
+import { PostMedia } from "./PostMedia";
 import {
   Dialog,
   DialogContent,
@@ -11,34 +13,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-/** Captions run long — clip to a readable length on a word boundary. */
-function clip(text: string, max = 220): string {
-  const t = text.trim().replace(/\s+/g, " ");
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max);
-  const lastSpace = cut.lastIndexOf(" ");
-  return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
-}
-
 /**
- * A single featured post in the performance grid: thumbnail, view/like/comment
- * stats, and an overlay revealed on hover (desktop) or tap (mobile). The overlay
- * shows the curated "why it worked" copy, falling back to the post's own caption
- * when none has been written. Falls back to a branded placeholder when no
- * thumbnail asset is wired yet (mirrors VideoPlayer).
+ * A single featured post in the performance grid: the post's video (playing
+ * only while on screen), view/like/comment stats, and an overlay revealed on
+ * hover (desktop) or tap (mobile). The overlay shows the curated "why it
+ * worked" copy, falling back to the post's own caption when none has been
+ * written. Media degrades video → thumbnail → placeholder (see PostMedia).
  */
 export function PortfolioCard({ post }: { post: PortfolioPost }) {
-  const [imgFailed, setImgFailed] = useState(false);
   const [showWhy, setShowWhy] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
-  const thumb = post.thumbnailUrl;
-  const showImage = thumb && !imgFailed;
+  const title = postTitle(post);
 
   // Curated copy wins; otherwise fall back to the post's own caption.
   const curated = post.whyItWorked?.trim();
   const overlayText = curated || (post.caption?.trim() ? clip(post.caption) : "");
   const hasWhy = Boolean(overlayText);
-  const label = post.topic?.trim() || "this post";
+  const label = title;
 
   // Long-form analysis opens in a modal; the card only ever shows the hook.
   const longText = post.whyItWorkedLong?.trim();
@@ -47,25 +38,10 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
   return (
     <article className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card">
       <div
-        className="group relative aspect-[4/5] overflow-hidden bg-muted/20"
+        className="group relative aspect-[9/16] overflow-hidden bg-muted/20"
         onMouseLeave={() => setShowWhy(false)}
       >
-        {showImage ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={thumb}
-            alt={post.topic}
-            className="h-full w-full object-cover"
-            onError={() => setImgFailed(true)}
-          />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-b from-secondary/10 to-transparent px-4 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary/15">
-              <BarChart3 className="h-5 w-5 text-secondary" />
-            </div>
-            <p className="text-sm font-semibold leading-snug">{post.topic}</p>
-          </div>
-        )}
+        <PostMedia post={post} />
 
         <div className="absolute left-3 top-3 z-30 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
           {formatCompact(post.views)} views
@@ -120,7 +96,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <h3 className="text-sm font-semibold leading-snug">{post.topic}</h3>
+        <h3 className="text-sm font-semibold leading-snug">{title}</h3>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
@@ -141,7 +117,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
               href={post.permalink}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={`View ${label} on ${post.platform === "tiktok" ? "TikTok" : "Instagram"}`}
+              aria-label={`View ${label} on ${platformName(post.platform)}`}
               className="inline-flex items-center gap-1 text-xs font-medium text-secondary hover:underline"
             >
               View post
@@ -155,7 +131,7 @@ export function PortfolioCard({ post }: { post: PortfolioPost }) {
         <Dialog open={modalOpen} onOpenChange={setModalOpen}>
           <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle className="text-left text-lg">{post.topic || "Why it worked"}</DialogTitle>
+              <DialogTitle className="text-left text-lg">{title}</DialogTitle>
             </DialogHeader>
 
             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
