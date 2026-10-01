@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Menu, X, Instagram, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,46 @@ const RESOURCE_LINKS = [
   { href: "/terms", label: "Terms" },
 ] as const;
 
+/** Mobile: below this scroll depth the header always shows in full. */
+const COMPACT_AFTER_PX = 64;
+/** Ignore scroll jitter smaller than this when deciding direction. */
+const SCROLL_DELTA_PX = 8;
+
+/**
+ * Mobile header compaction: true once the user scrolls down past the top,
+ * false again as soon as they scroll up (or return to the top), so the logo,
+ * menu, and page nav are one flick away.
+ */
+function useCompactOnScroll(disabled: boolean): boolean {
+  const [compact, setCompact] = useState(false);
+  useEffect(() => {
+    if (disabled) {
+      setCompact(false);
+      return;
+    }
+    let lastY = window.scrollY;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const y = window.scrollY;
+      if (y < COMPACT_AFTER_PX) setCompact(false);
+      else if (y - lastY > SCROLL_DELTA_PX) setCompact(true);
+      else if (lastY - y > SCROLL_DELTA_PX) setCompact(false);
+      else return; // within jitter: keep lastY as the reference point
+      lastY = y;
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [disabled]);
+  return compact;
+}
+
 /** Pages that render the request form inline; elsewhere the CTA goes to the landing page's. */
 const PAGES_WITH_FORM = new Set(["/", "/portfolio"]);
 
@@ -98,6 +138,13 @@ export function HeaderNav() {
   useEffect(() => {
     setPortalReady(true);
   }, []);
+
+  const compact = useCompactOnScroll(mobileMenuOpen);
+  // Keep the collapsed rows out of the tab order and accessibility tree.
+  const collapsibleRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    collapsibleRef.current?.toggleAttribute("inert", compact);
+  }, [compact]);
 
   const onHome = pathname === "/";
   const onPortfolio = pathname.startsWith("/portfolio");
@@ -141,54 +188,73 @@ export function HeaderNav() {
   return (
     <>
       {/* —— Mobile —— */}
-      <div className="md:hidden flex flex-col gap-2 py-2.5">
-        <div className="flex items-center justify-between gap-3 min-h-11">
-          <LogoLink className="text-[0.9375rem] leading-none truncate pr-2" />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 shrink-0 rounded-xl text-foreground hover:bg-muted/60"
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-nav-drawer"
-            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobileMenuOpen((o) => !o)}
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
-        </div>
-
-        <nav
-          className="grid w-full grid-cols-2 gap-1 rounded-xl border border-border bg-muted/30 p-1"
-          aria-label="Primary navigation"
+      <div className="md:hidden flex flex-col py-2.5">
+        {/* Logo/menu + page nav collapse on scroll-down, leaving only the CTA. */}
+        <div
+          ref={collapsibleRef}
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none",
+            compact ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100"
+          )}
         >
-          <Link
-            href="/"
-            className={cn(
-              segmentClass,
-              onHome
-                ? "bg-secondary text-secondary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70"
-            )}
-          >
-            Home
-          </Link>
-          <Link
-            href="/portfolio"
-            className={cn(
-              segmentClass,
-              onPortfolio
-                ? "bg-secondary text-secondary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70"
-            )}
-          >
-            Portfolio
-          </Link>
-        </nav>
+          <div className="min-h-0 overflow-hidden">
+            <div className="flex flex-col gap-2 pb-2">
+              <div className="flex items-center justify-between gap-3 min-h-11">
+                <LogoLink className="text-[0.9375rem] leading-none truncate pr-2" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 shrink-0 rounded-xl text-foreground hover:bg-muted/60"
+                  aria-expanded={mobileMenuOpen}
+                  aria-controls="mobile-nav-drawer"
+                  aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                  onClick={() => setMobileMenuOpen((o) => !o)}
+                >
+                  {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                </Button>
+              </div>
+
+              <nav
+                className="grid w-full grid-cols-2 gap-1 rounded-xl border border-border bg-muted/30 p-1"
+                aria-label="Primary navigation"
+              >
+                <Link
+                  href="/"
+                  className={cn(
+                    segmentClass,
+                    onHome
+                      ? "bg-secondary text-secondary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70"
+                  )}
+                >
+                  Home
+                </Link>
+                <Link
+                  href="/portfolio"
+                  className={cn(
+                    segmentClass,
+                    onPortfolio
+                      ? "bg-secondary text-secondary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70"
+                  )}
+                >
+                  Portfolio
+                </Link>
+              </nav>
+            </div>
+          </div>
+        </div>
 
         <Link
           href={ctaHref}
-          className="flex min-h-11 w-full items-center justify-center rounded-xl border border-secondary/40 bg-secondary/10 text-sm font-bold whitespace-nowrap text-secondary transition-colors hover:bg-secondary/20 [-webkit-tap-highlight-color:transparent]"
+          className={cn(
+            "flex min-h-11 w-full items-center justify-center rounded-xl border text-sm font-bold whitespace-nowrap transition-colors [-webkit-tap-highlight-color:transparent]",
+            // Solid once it's the only thing left in the bar.
+            compact
+              ? "border-secondary bg-secondary text-secondary-foreground hover:bg-secondary/90"
+              : "border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20"
+          )}
         >
           Request a Campaign
         </Link>
