@@ -78,12 +78,15 @@ function LogoLink({ className }: { className?: string }) {
 }
 
 const RESOURCE_LINKS = [
+  { href: "/workflow", label: "Workflow & Course" },
+  { href: "/downloads", label: "Course Access" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
   { href: "/terms", label: "Terms" },
-  { href: "/downloads", label: "Course Access" },
-  { href: "/orders", label: "Orders" },
 ] as const;
+
+/** Pages that render the request form inline; elsewhere the CTA goes to the landing page's. */
+const PAGES_WITH_FORM = new Set(["/", "/portfolio"]);
 
 export function HeaderNav() {
   const pathname = usePathname();
@@ -96,16 +99,12 @@ export function HeaderNav() {
     setPortalReady(true);
   }, []);
 
-  const onCharts =
-    pathname.startsWith("/charts") || pathname.startsWith("/checkout") || pathname.startsWith("/order");
-  const onWorkflow = pathname === "/" || pathname.startsWith("/workflow");
-  const onResources =
-    pathname.startsWith("/about") ||
-    pathname.startsWith("/faq") ||
-    pathname.startsWith("/terms") ||
-    pathname.startsWith("/downloads") ||
-    pathname.startsWith("/orders");
-  const onBrands = pathname.startsWith("/brands");
+  const onHome = pathname === "/";
+  const onPortfolio = pathname.startsWith("/portfolio");
+  const onResources = RESOURCE_LINKS.some(
+    ({ href }) => pathname === href || pathname.startsWith(href + "/"),
+  );
+  const ctaHref = PAGES_WITH_FORM.has(pathname) ? "#inquiry" : "/#inquiry";
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -167,36 +166,31 @@ export function HeaderNav() {
             href="/"
             className={cn(
               segmentClass,
-              onWorkflow
+              onHome
                 ? "bg-secondary text-secondary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70"
             )}
           >
-            Workflow
+            Home
           </Link>
           <Link
-            href="/charts"
+            href="/portfolio"
             className={cn(
               segmentClass,
-              onCharts
+              onPortfolio
                 ? "bg-secondary text-secondary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/50 active:bg-muted/70"
             )}
           >
-            Charts
+            Portfolio
           </Link>
         </nav>
 
         <Link
-          href="/brands"
-          className={cn(
-            "flex min-h-11 w-full items-center justify-center rounded-xl text-sm font-bold whitespace-nowrap transition-colors [-webkit-tap-highlight-color:transparent]",
-            onBrands
-              ? "bg-secondary text-secondary-foreground shadow-sm"
-              : "border border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20"
-          )}
+          href={ctaHref}
+          className="flex min-h-11 w-full items-center justify-center rounded-xl border border-secondary/40 bg-secondary/10 text-sm font-bold whitespace-nowrap text-secondary transition-colors hover:bg-secondary/20 [-webkit-tap-highlight-color:transparent]"
         >
-          Work With Yung Geeski
+          Request a Campaign
         </Link>
       </div>
 
@@ -209,23 +203,23 @@ export function HeaderNav() {
               href="/"
               className={cn(
                 "px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
-                onWorkflow
+                onHome
                   ? "bg-secondary text-secondary-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
-              Workflow
+              Home
             </Link>
             <Link
-              href="/charts"
+              href="/portfolio"
               className={cn(
                 "px-3 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap",
-                onCharts
+                onPortfolio
                   ? "bg-secondary text-secondary-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
-              Custom Charts
+              Portfolio
             </Link>
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
@@ -261,15 +255,10 @@ export function HeaderNav() {
               </DropdownMenuContent>
             </DropdownMenu>
             <Link
-              href="/brands"
-              className={cn(
-                "ml-1 px-3.5 py-2 rounded-md text-sm font-semibold transition-colors whitespace-nowrap border",
-                onBrands
-                  ? "bg-secondary text-secondary-foreground border-secondary"
-                  : "border-secondary/40 text-secondary hover:bg-secondary/10"
-              )}
+              href={ctaHref}
+              className="ml-1 rounded-md bg-secondary px-3.5 py-2 text-sm font-semibold whitespace-nowrap text-secondary-foreground transition-colors hover:bg-secondary/90"
             >
-              Work With Yung Geeski
+              Request a Campaign
             </Link>
           </nav>
         </div>
@@ -319,18 +308,20 @@ export function HeaderNav() {
               <div className="flex-1 overflow-y-auto px-3 py-4">
                 <button
                   type="button"
-                  className={cn(
-                    "mb-4 flex w-full min-h-11 items-center justify-center rounded-xl text-sm font-bold transition-colors",
-                    onBrands
-                      ? "bg-secondary text-secondary-foreground"
-                      : "border border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20"
-                  )}
+                  className="mb-4 flex w-full min-h-11 items-center justify-center rounded-xl bg-secondary text-sm font-bold text-secondary-foreground transition-colors hover:bg-secondary/90"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    router.push("/brands");
+                    if (ctaHref === "#inquiry") {
+                      // Wait for the drawer's scroll lock to release before scrolling.
+                      setTimeout(() => {
+                        document.getElementById("inquiry")?.scrollIntoView({ behavior: "smooth" });
+                      }, 50);
+                    } else {
+                      router.push(ctaHref);
+                    }
                   }}
                 >
-                  Work With Yung Geeski
+                  Request a Campaign
                 </button>
                 <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Resources

@@ -279,7 +279,7 @@ export function MetricsPanel() {
         <CardHeader>
           <CardTitle className="text-lg">Headline overrides</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Any value set here wins over live/snapshot data on /brands. Leave blank to use the
+            Any value set here wins over live/snapshot data on the landing page. Leave blank to use the
             computed value. Use when a platform is down or a figure can&apos;t be pulled via API.
           </p>
           <p className="text-xs text-muted-foreground">
@@ -330,7 +330,9 @@ export function MetricsPanel() {
         <CardHeader>
           <CardTitle className="text-lg">{editingId ? "Edit post" : "Add post"}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Featured posts appear on /brands, ordered by sort order. {featuredCount} featured.
+            Featured posts appear on the home page (first 6) and /portfolio (all, up to 12),
+            ordered by sort order. Each plays the video at
+            public/videos/portfolio/&lt;reel shortcode&gt;.mp4. {featuredCount} featured.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -432,7 +434,7 @@ export function MetricsPanel() {
                 onCheckedChange={(c) => setPostForm((f) => ({ ...f, is_featured: c === true }))}
                 disabled={!supabaseConfigured}
               />
-              Featured on /brands
+              Featured (home + portfolio)
             </label>
             <div className="flex items-center gap-2">
               <Label htmlFor="p-sort" className="text-sm">

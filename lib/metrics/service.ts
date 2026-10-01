@@ -1,5 +1,5 @@
 /**
- * Public read API for social metrics used by the /brands sponsor page.
+ * Public read API for social metrics used by the landing page and /portfolio.
  *
  * The page imports ONLY from here. Resolution order (fallback chain):
  *   1. Live cache  — latest snapshot per platform written by the refresh job
@@ -20,6 +20,7 @@ import {
   type MetricOverrideRow,
   type SocialPostRow,
 } from "@/lib/supabase";
+import { portfolioVideoPath } from "@/lib/portfolio";
 
 function sum(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
@@ -185,10 +186,14 @@ function mapRow(row: SocialPostRow): PortfolioPost {
     saves: row.saves ?? undefined,
     permalink: row.permalink,
     thumbnailUrl: row.thumbnail_url,
+    videoUrl: portfolioVideoPath(row.permalink),
   };
 }
 
-/** The featured portfolio posts for the performance grid. */
+/**
+ * Featured posts in display order. The landing page shows the first 6; the
+ * /portfolio carousel shows them all.
+ */
 export async function getFeaturedPortfolio(limit = 6): Promise<MetricsResult<PortfolioPost[]>> {
   try {
     const posts = await getFeaturedSocialPosts(limit);

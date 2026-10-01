@@ -61,7 +61,7 @@ export function BrandInquiryForm() {
         const body = await res.json().catch(() => ({}));
         throw new Error(typeof body.error === "string" ? body.error : "Submission failed");
       }
-      router.push("/brands/thanks");
+      router.push("/thanks");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong");
     }

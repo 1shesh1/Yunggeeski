@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { brandInquirySchema } from "@/lib/schemas";
 import { isRateLimited } from "@/lib/rateLimit";
 import { getSupabase, insertBrandInquiry } from "@/lib/supabase";
-import { sendBrandInquiryEmail } from "@/lib/email";
+import {
+  sendBrandInquiryConfirmationEmail,
+  sendBrandInquiryEmail,
+  type BrandInquiryPayload,
+} from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,8 +63,10 @@ export async function POST(request: NextRequest) {
       persisted = true;
     }
 
-    // Best-effort notification. Self-guards and no-ops (ok:false) when no Resend key.
-    const notified = await sendBrandInquiryEmail({
+    // Best-effort emails: the organized notification to the campaign inbox, and a
+    // receipt to the submitter saying who they'll hear from. Both self-guard and
+    // no-op (ok:false) without a Resend key; neither failure fails the request.
+    const payload: BrandInquiryPayload = {
       name: d.name,
       company: d.company,
       workEmail: d.work_email,
@@ -73,7 +79,11 @@ export async function POST(request: NextRequest) {
       paidAdsRequired: paidAds,
       categoryExclusivityRequired: exclusivity,
       additionalInfo: additionalInfo,
-    });
+    };
+    const [notified, confirmed] = await Promise.all([
+      sendBrandInquiryEmail(payload),
+      sendBrandInquiryConfirmationEmail(payload),
+    ]);
 
     if (!persisted && !notified.ok) {
       // No DB and no email configured — dev/mock with no keys. Log (no PII) and succeed.
@@ -83,6 +93,9 @@ export async function POST(request: NextRequest) {
       });
     } else if (!notified.ok) {
       console.error("[brands/inquiry] notify failed (lead saved):", notified.error);
+    }
+    if (!confirmed.ok && (persisted || notified.ok)) {
+      console.error("[brands/inquiry] submitter confirmation failed:", confirmed.error);
     }
 
     return NextResponse.json({ ok: true });

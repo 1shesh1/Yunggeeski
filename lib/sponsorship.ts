@@ -1,80 +1,49 @@
 /**
- * Single source of truth for the /brands sponsor page's static content:
- * service packages, process steps, brand-fit list, disclosure, and case studies.
+ * Single source of truth for the brand-facing static content (landing page,
+ * /portfolio, /faq): what a campaign includes, process steps, brand-fit list,
+ * FAQ, disclosure, and case studies.
  *
- * Keeping this here (not inline in the page) means copy/pricing can change in one
- * place and lets a future media-kit generator reuse the same data.
+ * Keeping this here (not inline in the page) means copy can change in one place
+ * and lets a future media-kit generator reuse the same data.
  */
 
 import type { LucideIcon } from "lucide-react";
 import { FileText, LineChart, ClipboardCheck, Send } from "lucide-react";
 
-export interface SponsorPackage {
-  id: "sponsored_chart" | "multi_post" | "monthly_partner";
-  name: string;
-  /** Display price string, e.g. "Starting at $2,000". */
-  startingPrice: string;
-  /** Short positioning line under the name. */
-  tagline: string;
-  includes: string[];
-  /**
-   * Qualifying line under the includes list, rendered WITHOUT a checkmark —
-   * every `includes` item gets a ✓ meaning "included at this price", so
-   * anything that is available but not included belongs here instead.
-   */
-  note?: string;
-  /** Marks the visually emphasized card. */
-  featured?: boolean;
-}
-
-export const SPONSOR_PACKAGES: SponsorPackage[] = [
+/**
+ * What every campaign includes. Deliberately one offer with no tiers or prices:
+ * campaigns are scoped and quoted after the brief comes in.
+ */
+export const CAMPAIGN_INCLUDES: { title: string; desc: string }[] = [
   {
-    id: "sponsored_chart",
-    name: "Sponsored Chart",
-    startingPrice: "Starting at $2,000",
-    tagline:
-      "A custom data-driven video built around your brand, product, or investment narrative.",
-    includes: [
-      "Topic development",
-      "Data research",
-      "Visualization",
-      "Animation",
-      "Caption",
-      "Pinned comment",
-      "Organic publication",
-    ],
+    title: "Topic development",
+    desc: "A chart concept built so your product is part of the story, not an interruption.",
   },
   {
-    id: "multi_post",
-    name: "Multi-Post Campaign",
-    startingPrice: "Starting at $5,000",
-    tagline:
-      "A coordinated series of charts designed to explain your product, build recognition, and generate measurable audience actions.",
-    includes: [
-      "Three videos",
-      "Campaign strategy",
-      "Integrated CTA",
-      "Performance reporting",
-      "One revision round per video",
-    ],
-    featured: true,
+    title: "Data research",
+    desc: "Sourced, checked, and cited — the numbers hold up in the comments.",
   },
   {
-    id: "monthly_partner",
-    name: "Monthly Content Partner",
-    startingPrice: "Starting at $6,000 / month for four videos",
-    tagline:
-      "Ongoing production for brands that need consistent, high-quality financial content.",
-    includes: [
-      "Four videos monthly",
-      "Research and topic development",
-      "Priority production",
-      "Monthly performance review",
-      "Paid advertising usage rights available separately",
-    ],
-    note: "Six-to-eight-video packages available by custom quote.",
+    title: "Visualization & animation",
+    desc: "The moving-chart format that keeps viewers watching to the finish.",
+  },
+  {
+    title: "Caption & pinned comment",
+    desc: "Copy written around your call to action, with required disclosures.",
+  },
+  {
+    title: "Organic publication",
+    desc: "Posted natively to the Yung Geeski audience — no ad-feed look.",
+  },
+  {
+    title: "Performance reporting",
+    desc: "Views, reach, engagement, and CTA response delivered after launch.",
   },
 ];
+
+/** One line on scope, shown under the includes list. */
+export const CAMPAIGN_SCOPE_NOTE =
+  "Single videos, multi-post series, and ongoing partnerships — every campaign is scoped and quoted to your goals after a short brief.";
 
 export interface ProcessStep {
   icon: LucideIcon;
@@ -275,3 +244,41 @@ export const DELTA_OPTIONS_CASE_STUDY: CaseStudy = {
 };
 
 export const CASE_STUDIES: CaseStudy[] = [DELTA_OPTIONS_CASE_STUDY];
+
+/** Headline Delta Options figures for the compact proof card on /portfolio. */
+export const DELTA_OPTIONS_HIGHLIGHTS: { label: string; value: string }[] = [
+  { label: "“OPTION” comments", value: fmt(DELTA_METRICS.optionComments) },
+  { label: "Link clicks", value: fmt(DELTA_METRICS.linkClicks) },
+  { label: "Accounts reached", value: fmt(DELTA_METRICS.accountsReached) },
+];
+
+/**
+ * Brand-side FAQ, shown above the request form and on /faq. Answers stay
+ * consistent with the process and disclosure copy above — no prices quoted.
+ */
+export const BRAND_FAQ: { q: string; a: string }[] = [
+  {
+    q: "How much does a campaign cost?",
+    a: "Every campaign is scoped to its goals, deliverables, and timeline, so pricing is quoted after we review your brief. Share an estimated budget in the request form and you'll get a tailored proposal.",
+  },
+  {
+    q: "Do we approve the video before it goes live?",
+    a: "Yes. The video, caption, call to action, and disclosures are all prepared for your review before anything is published.",
+  },
+  {
+    q: "How long does a campaign take?",
+    a: "It depends on scope. Include your desired launch date in the request and we'll confirm what's feasible in our reply.",
+  },
+  {
+    q: "What results can we expect?",
+    a: "Every campaign ends with a performance report — views, reach, engagement, and response to your call to action. See the Delta Options case study for a real example. We don't guarantee view totals, customer acquisition, or investment performance.",
+  },
+  {
+    q: "Is sponsored content disclosed?",
+    a: "Always. Every sponsored campaign is clearly disclosed to the audience.",
+  },
+  {
+    q: "Can we use the video in our own ads?",
+    a: "Paid advertising usage rights are available. Note it in your request so it's included in the proposal.",
+  },
+];

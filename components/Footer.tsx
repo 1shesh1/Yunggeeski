@@ -18,11 +18,38 @@ export function Footer() {
               Yung<span className="text-secondary">Geeski</span>
             </Link>
             <Link
-              href="/brands"
+              href="/#inquiry"
               className="mt-4 inline-flex items-center rounded-lg border border-secondary/40 bg-secondary/10 px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-secondary/20"
             >
-              Work With Yung Geeski
+              Request a Campaign
             </Link>
+          </div>
+
+          {/* Brands */}
+          <div>
+            <h3 className="font-semibold text-foreground text-sm mb-3">For Brands</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link href="/portfolio" className={linkClass}>
+                  Portfolio
+                </Link>
+              </li>
+              <li>
+                <Link href="/#case-study" className={linkClass}>
+                  Case Study
+                </Link>
+              </li>
+              <li>
+                <Link href="/#services" className={linkClass}>
+                  What You Get
+                </Link>
+              </li>
+              <li>
+                <Link href="/#inquiry" className={linkClass}>
+                  Request a Campaign
+                </Link>
+              </li>
+            </ul>
           </div>
 
           {/* Workflow */}
@@ -30,50 +57,18 @@ export function Footer() {
             <h3 className="font-semibold text-foreground text-sm mb-3">Workflow</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/#tier1" className={linkClass}>
-                  Ideas
+                <Link href="/workflow" className={linkClass}>
+                  Course Overview
                 </Link>
               </li>
               <li>
-                <Link href="/#tier2" className={linkClass}>
-                  Ideas + System
-                </Link>
-              </li>
-              <li>
-                <Link href="/#tier3" className={linkClass}>
-                  Full Package
+                <Link href="/workflow#pricing" className={linkClass}>
+                  Pricing
                 </Link>
               </li>
               <li>
                 <Link href="/workflow/access" className={linkClass}>
                   Access
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Charts */}
-          <div>
-            <h3 className="font-semibold text-foreground text-sm mb-3">Charts</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/charts" className={linkClass}>
-                  Overview
-                </Link>
-              </li>
-              <li>
-                <Link href="/checkout/basic" className={linkClass}>
-                  Basic
-                </Link>
-              </li>
-              <li>
-                <Link href="/checkout/standard" className={linkClass}>
-                  Standard
-                </Link>
-              </li>
-              <li>
-                <Link href="/checkout/premium" className={linkClass}>
-                  Premium
                 </Link>
               </li>
             </ul>

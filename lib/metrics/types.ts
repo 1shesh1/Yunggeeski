@@ -1,5 +1,5 @@
 /**
- * Typed shapes for social metrics consumed by the /brands sponsor page.
+ * Typed shapes for social metrics consumed by the landing page and /portfolio.
  *
  * The page reads exclusively through `lib/metrics/service.ts`, which currently
  * returns provisional fixtures. Issue #4 (live TikTok + Instagram service) will
@@ -47,6 +47,12 @@ export interface PortfolioPost {
   permalink?: string | null;
   /** Thumbnail image URL. Null until a real asset is wired (PortfolioCard falls back). */
   thumbnailUrl?: string | null;
+  /**
+   * Self-hosted MP4 for the post (see lib/portfolio.ts). Derived from the
+   * permalink, so it may point at a file that hasn't been added yet — the
+   * player falls back to the thumbnail when it 404s.
+   */
+  videoUrl?: string | null;
 }
 
 /**

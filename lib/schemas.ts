@@ -61,7 +61,7 @@ export function parseBrandColors(input: string): string[] {
     .filter((s) => HEX_REGEX.test(s));
 }
 
-// —— Brand campaign inquiry (/brands) ——
+// —— Brand campaign inquiry (landing page + /portfolio form) ——
 
 /** Budget bands. "under_2k" is kept for filtering, not for acceptance. */
 export const BUDGET_OPTIONS = [

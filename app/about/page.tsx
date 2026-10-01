@@ -33,7 +33,7 @@ export default function AboutPage() {
         </div>
         <div className="mt-8 flex flex-col items-center gap-6">
           <Button asChild size="lg">
-            <Link href="/">Let&apos;s Make an Impact</Link>
+            <Link href="/#inquiry">Let&apos;s Make an Impact</Link>
           </Button>
           <p className="text-sm text-muted-foreground">
             Interested in brand partnerships? Contact{" "}

@@ -1,512 +1,381 @@
+import { existsSync } from "fs";
+import path from "path";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, X, ArrowRight, BookOpen, BarChart2, Zap } from "lucide-react";
-import { CourseWorkflowPricingGrid } from "@/components/CourseWorkflowPricingGrid";
-import { SocialProofSection } from "@/components/SocialProofSection";
-import { StickyCtaBanner } from "@/components/StickyCtaBanner";
-import { VideoPlayer } from "@/components/VideoPlayer";
-import { cn } from "@/lib/utils";
-import type { CourseTierId } from "@/lib/course";
+import { ArrowRight, Check, Quote, Sparkles } from "lucide-react";
+import { PortfolioCard } from "@/components/brands/PortfolioCard";
+import { CaseStudyLogo } from "@/components/brands/CaseStudyLogo";
+import { DonutChart } from "@/components/brands/DonutChart";
+import { BrandFaq } from "@/components/brands/BrandFaq";
+import { CtaBand, InquirySection } from "@/components/brands/sections";
+import { INQUIRY_HREF, eyebrow, primaryCta, secondaryCta } from "@/components/brands/styles";
+import { getAccountMetrics, getFeaturedPortfolio } from "@/lib/metrics/service";
+import {
+  BRAND_FIT,
+  CAMPAIGN_INCLUDES,
+  CAMPAIGN_SCOPE_NOTE,
+  DELTA_OPTIONS_CASE_STUDY,
+  DISCLOSURE_STATEMENT,
+  PROCESS_STEPS,
+} from "@/lib/sponsorship";
+import { formatCompact } from "@/lib/utils";
 
-const BEFORE_AFTER_VIDEOS = {
-  before: "/videos/learn-before.mp4",
-  after: "/videos/learn-after.mp4",
+// Re-render on the server every 5 minutes so refreshed snapshots and admin
+// overrides reach the live page without a redeploy (the page reads the metrics
+// cache; without this it would be frozen at build time).
+export const revalidate = 300;
+
+export const metadata: Metadata = {
+  title: "Yung Geeski — Sponsored Financial Content for Brands",
+  description:
+    "Yung Geeski is a financial visual-content studio producing high-performing short-form chart campaigns for fintech, investing platforms, and finance brands.",
 };
 
-const COURSE_COMPARISON: { label: string; tier1: boolean; tier2: boolean; tier3: boolean }[] = [
-  { label: "50 viral chart ideas", tier1: true, tier2: true, tier3: true },
-  { label: "Narrative angle for each idea", tier1: true, tier2: true, tier3: true },
-  { label: "Data source references", tier1: true, tier2: true, tier3: true },
-  { label: "Hook logic behind why they work", tier1: true, tier2: true, tier3: true },
-  { label: "My exact workflow", tier1: false, tier2: true, tier3: true },
-  { label: "FRED + Yahoo Finance data pulling", tier1: false, tier2: true, tier3: true },
-  { label: "Cumulative % formatting logic", tier1: false, tier2: true, tier3: true },
-  { label: "CSV export method", tier1: false, tier2: true, tier3: true },
-  { label: "Full software stack", tier1: false, tier2: true, tier3: true },
-  { label: "20 finished viral chart videos", tier1: false, tier2: false, tier3: true },
-  { label: "All CSV files", tier1: false, tier2: false, tier3: true },
-  { label: "Captions + pinned comments", tier1: false, tier2: false, tier3: true },
-];
+const MEDIA_KIT_HREF = "/downloads/yung-geeski-media-kit.pdf";
 
-const COURSE_TIERS: {
-  id: CourseTierId;
-  name: string;
-  shortName: string;
-  price: number;
-  originalPrice: number | null;
-  badge?: string;
-  highlight?: boolean;
-  whoIsThisFor: string;
-  benefit: string;
-}[] = [
-  {
-    id: "tier1",
-    name: "Ideas — 50 Viral Chart Frameworks",
-    shortName: "Ideas",
-    price: 39,
-    originalPrice: null,
-    whoIsThisFor: "Creators who need chart ideas and angles, not the full workflow yet.",
-    benefit: "Removes idea paralysis.",
-  },
-  {
-    id: "tier2",
-    name: "Ideas + System — Workflow & Tools",
-    shortName: "Ideas + System",
-    price: 149,
-    originalPrice: 199,
-    badge: "Most Popular",
-    highlight: true,
-    whoIsThisFor: "Creators ready to build charts themselves with a proven system.",
-    benefit: "Removes technical confusion.",
-  },
-  {
-    id: "tier3",
-    name: "The Full Package",
-    shortName: "Full Package",
-    price: 299,
-    originalPrice: 399,
-    whoIsThisFor: "Those who want ideas, workflow, and ready-to-post assets all in one place.",
-    benefit: "Removes all guesswork.",
-  },
-];
+/**
+ * Landing page — the brand funnel:
+ *   hero → proof (metrics + standout posts) → sponsored case study → offer →
+ *   process → fit → FAQ → request form.
+ * Each proof block ends in a CTA so a convinced visitor never has to scroll back.
+ */
+export default async function HomePage() {
+  const [metricsResult, portfolioResult] = await Promise.all([
+    getAccountMetrics(),
+    getFeaturedPortfolio(6),
+  ]);
+  const m = metricsResult.data;
+  const portfolio = portfolioResult.data;
+  const provisional = metricsResult.source === "fallback";
 
-const TRUST_STATS = [
-  { value: "48M+", label: "Monthly Views" },
-  { value: "50", label: "Viral Chart Ideas" },
-  { value: "3", label: "Tiers" },
-  { value: "⚡", label: "Instant Access" },
-];
+  // Gate assets/content that a human still has to supply so the page never ships
+  // a 404 link. Auto-enables once the PDF lands — no code change needed.
+  const mediaKitAvailable = existsSync(path.join(process.cwd(), "public", MEDIA_KIT_HREF));
+  const caseStudy = DELTA_OPTIONS_CASE_STUDY;
+  const caseStudyHasResults = caseStudy.results.some((r) => r.value !== null);
+  // Charts are the preferred rendering; the raw-number grid stays as the
+  // fallback for a case study that hasn't had charts defined yet.
+  const caseStudyCharts = caseStudy.charts ?? [];
+  // Attribute the headline figures to the platforms that reported them, so a
+  // combined-looking row is never read as more than it is. Derived, not
+  // hardcoded — it widens on its own when TikTok starts syncing.
+  const PLATFORM_LABELS: Record<string, string> = { instagram: "Instagram", tiktok: "TikTok" };
+  const platformNames = (metricsResult.platforms ?? []).map((p) => PLATFORM_LABELS[p] ?? p);
+  const platformLabel =
+    platformNames.length > 0
+      ? new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(platformNames)
+      : null;
 
-const PAIN_POINTS = [
-  "You don't know which data angles actually go viral vs. which fall flat",
-  "Hours spent building charts that barely get any engagement",
-  "No consistent process — every chart starts from scratch",
-  "Technical confusion around data sourcing, formatting, and export",
-  "Generic chart aesthetics that blend in instead of stopping the scroll",
-];
+  const asOfNote = metricsResult.asOf
+    ? `As of ${new Date(metricsResult.asOf).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })}`
+    : provisional
+      ? "Provisional figures — live platform sync in progress"
+      : null;
 
-const OUTCOMES = [
-  "Generate 50+ viral chart ideas in minutes, not hours",
-  "Know exactly which narrative angles drive engagement before you start",
-  "Pull and format data from FRED and Yahoo Finance with confidence",
-  "Build charts with a repeatable system — no more guesswork",
-  "Post with captions and pinned comments optimized for reach",
-];
+  const performanceMetrics: { label: string; value: string }[] = [
+    { label: "Total followers", value: `${formatCompact(m.totalFollowers)}+` },
+    { label: "Best-performing video", value: `${formatCompact(m.bestVideoViews)} views` },
+    {
+      label: `Videos above ${formatCompact(m.notableViewsThreshold)} views`,
+      value: `${m.videosAboveThreshold}+`,
+    },
+    { label: "Monthly reach", value: formatCompact(m.monthlyReach) },
+    { label: "Content category", value: m.category },
+  ];
 
-const SOLUTION_PILLARS = [
-  {
-    icon: BookOpen,
-    title: "50 Viral Chart Frameworks",
-    desc: "Proven ideas with narrative angles, data sources, and the hook logic behind each one.",
-  },
-  {
-    icon: BarChart2,
-    title: "The Exact Workflow",
-    desc: "FRED + Yahoo Finance data pulling, CSV formatting, cumulative % logic, and the full software stack.",
-  },
-  {
-    icon: Zap,
-    title: "Ready-to-Post Assets",
-    desc: "20 finished viral chart videos, all CSV files, captions and pinned comments — in Tier 3.",
-  },
-];
-
-export default function WorkflowPage() {
   return (
-    <>
-      <div className="flex flex-col">
-
-        {/* ── HERO ── */}
-        <section className="relative overflow-hidden pt-16 pb-20 px-4">
-          <div className="absolute inset-0 bg-gradient-to-b from-secondary/5 via-transparent to-transparent pointer-events-none" />
-          <div className="container mx-auto max-w-3xl text-center relative z-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-secondary/10 px-4 py-1.5 text-xs font-semibold text-secondary uppercase tracking-wider mb-6">
-              Digital Course &amp; Workflow
-            </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-5">
-              Turn Raw Market Data Into{" "}
-              <span className="text-secondary">Viral Finance Content</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-xl mx-auto mb-8 leading-relaxed">
-              The exact system behind 48M+ monthly views — learn to build high-performing finance charts from scratch, with zero guesswork.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-8">
-              <Link
-                href="#pricing"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary text-secondary-foreground font-bold px-7 py-3.5 text-base hover:bg-secondary/90 transition-colors shadow-lg shadow-secondary/20"
-              >
-                Get Instant Access
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="#whats-included"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border text-foreground font-semibold px-7 py-3.5 text-base hover:bg-muted/50 transition-colors"
-              >
-                See What&apos;s Included
-              </Link>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Instant access after purchase&nbsp;&nbsp;·&nbsp;&nbsp;48M+ monthly views&nbsp;&nbsp;·&nbsp;&nbsp;One-time payment, no subscription
-            </p>
+    <div className="flex flex-col">
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden px-4 pb-14 pt-16 sm:pt-20">
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-secondary/5 via-transparent to-transparent" />
+        <div className="container relative z-10 mx-auto max-w-3xl text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-secondary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-secondary">
+            <Sparkles className="h-3.5 w-3.5" />
+            Financial Visual-Content Studio
           </div>
-        </section>
-
-        {/* ── TRUST BAR ── */}
-        <section className="border-y border-border bg-card/40 py-6 px-4">
-          <div className="container mx-auto max-w-3xl">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-              {TRUST_STATS.map(({ value, label }) => (
-                <div key={label}>
-                  <p className="text-2xl font-bold text-secondary">{value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── PROBLEM ── */}
-        <section className="py-20 px-4">
-          <div className="container mx-auto max-w-2xl">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest text-center mb-3">
-              The Problem
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">
-              Most finance creators hit the same wall.
-            </h2>
-            <p className="text-muted-foreground text-center mb-10 max-w-lg mx-auto">
-              Idea paralysis. Technical confusion. Spending hours on content that underperforms. The problem isn&apos;t effort — it&apos;s the system.
-            </p>
-            <ul className="space-y-3">
-              {PAIN_POINTS.map((point, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3.5"
-                >
-                  <span className="mt-0.5 h-5 w-5 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-                    <span className="text-destructive text-xs font-bold">✕</span>
-                  </span>
-                  <span className="text-sm text-muted-foreground leading-relaxed">{point}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* ── SOLUTION ── */}
-        <section className="py-16 px-4 bg-card/30">
-          <div className="container mx-auto max-w-3xl text-center">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest mb-3">
-              The Solution
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-              A repeatable system for charts that drive real engagement.
-            </h2>
-            <p className="text-muted-foreground mb-10 max-w-lg mx-auto">
-              This isn&apos;t a generic course. It&apos;s the exact workflow behind 48M+ monthly views — broken down so you can replicate it yourself.
-            </p>
-            <div className="grid sm:grid-cols-3 gap-5 text-left">
-              {SOLUTION_PILLARS.map(({ icon: Icon, title, desc }) => (
-                <div key={title} className="rounded-xl border border-border bg-card p-5">
-                  <div className="h-9 w-9 rounded-lg bg-secondary/10 flex items-center justify-center mb-3">
-                    <Icon className="h-4 w-4 text-secondary" />
-                  </div>
-                  <h3 className="font-semibold mb-2 text-sm">{title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── OUTCOMES: WHAT YOU'LL BE ABLE TO DO ── */}
-        <section className="py-20 px-4">
-          <div className="container mx-auto max-w-2xl">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest text-center mb-3">
-              Outcomes
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10">
-              What you&apos;ll be able to do
-            </h2>
-            <ul className="space-y-3">
-              {OUTCOMES.map((outcome, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-3 rounded-xl border border-secondary/20 bg-secondary/5 px-4 py-3.5"
-                >
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden />
-                  <span className="text-sm font-medium leading-relaxed">{outcome}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {/* ── WHAT'S INCLUDED (comparison table) ── */}
-        <section id="whats-included" className="py-20 px-4 bg-card/30 scroll-mt-4">
-          <div className="container mx-auto max-w-4xl">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest text-center mb-3">
-              What&apos;s Included
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3">
-              Full breakdown by tier
-            </h2>
-            <p className="text-sm text-muted-foreground text-center mb-10">
-              Every tier unlocks all sections at and below it. Tier 3 includes everything.
-            </p>
-            <div className="overflow-x-auto rounded-xl border border-border bg-card">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3.5 px-4 font-medium text-muted-foreground text-xs w-1/2">
-                      Feature
-                    </th>
-                    <th className="text-center py-3.5 px-3 font-semibold text-foreground text-xs">
-                      Ideas<br />
-                      <span className="text-secondary font-bold">$39</span>
-                    </th>
-                    <th className="text-center py-3.5 px-3 font-semibold text-xs bg-secondary/5 border-x border-secondary/20">
-                      <span className="text-secondary">Ideas + System</span><br />
-                      <span className="text-secondary font-bold">$149</span>
-                    </th>
-                    <th className="text-center py-3.5 px-3 font-semibold text-foreground text-xs">
-                      Full Package<br />
-                      <span className="text-secondary font-bold">$299</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COURSE_COMPARISON.map((row, i) => (
-                    <tr key={i} className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors">
-                      <td className="py-2.5 px-4 text-muted-foreground text-xs">{row.label}</td>
-                      <td className="py-2.5 px-3 text-center">
-                        {row.tier1 ? (
-                          <Check className="h-4 w-4 text-secondary mx-auto" aria-hidden />
-                        ) : (
-                          <X className="h-4 w-4 text-muted-foreground/30 mx-auto" aria-hidden />
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center bg-secondary/5 border-x border-secondary/10">
-                        {row.tier2 ? (
-                          <Check className="h-4 w-4 text-secondary mx-auto" aria-hidden />
-                        ) : (
-                          <X className="h-4 w-4 text-muted-foreground/30 mx-auto" aria-hidden />
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        {row.tier3 ? (
-                          <Check className="h-4 w-4 text-secondary mx-auto" aria-hidden />
-                        ) : (
-                          <X className="h-4 w-4 text-muted-foreground/30 mx-auto" aria-hidden />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        {/* ── BEFORE & AFTER ── */}
-        <section className="py-20 px-4">
-          <div className="container mx-auto max-w-3xl">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest text-center mb-3">
-              Transformation
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3">
-              Before &amp; after the system
-            </h2>
-            <p className="text-sm text-muted-foreground text-center mb-10">
-              The difference between a raw data export and a chart built with the workflow.
-            </p>
-            <div className="grid gap-5 sm:grid-cols-2">
-              {/* Before */}
-              <div className="rounded-2xl border border-border overflow-hidden bg-card flex flex-col">
-                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/40" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Before
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground px-4 pb-3">
-                  Default export — no narrative, easy to scroll past.
-                </p>
-                <div className="aspect-[4/5] overflow-hidden">
-                  <VideoPlayer src={BEFORE_AFTER_VIDEOS.before} label="Before" />
-                </div>
-              </div>
-              {/* After */}
-              <div className="rounded-2xl border border-secondary/40 overflow-hidden bg-card flex flex-col">
-                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-secondary" />
-                  <span className="text-xs font-semibold text-secondary uppercase tracking-wide">
-                    After
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground px-4 pb-3">
-                  Clear angle, clean data — built for virality.
-                </p>
-                <div className="aspect-[4/5] overflow-hidden">
-                  <VideoPlayer src={BEFORE_AFTER_VIDEOS.after} label="After" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── SOCIAL PROOF ── */}
-        <SocialProofSection />
-
-        {/* ── PRICING ── */}
-        <section id="pricing" className="py-20 px-4 bg-card/30 scroll-mt-4">
-          <div className="container mx-auto max-w-4xl">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest text-center mb-3">
-              Pricing
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3">
-              Choose your learning path
-            </h2>
-            <p className="text-sm text-muted-foreground text-center mb-2 max-w-lg mx-auto">
-              Instant access after purchase. Each tier unlocks everything at and below it.
-            </p>
-            <p className="text-xs text-muted-foreground text-center mb-10 max-w-xl mx-auto leading-relaxed">
-              After checkout, open the{" "}
-              <Link href="/workflow/access" className="text-secondary hover:underline">
-                workflow access page
-              </Link>{" "}
-              and request a sign-in link with the same email you paid with. No tier in the URL — your session
-              unlocks downloads after you verify your inbox.
-            </p>
-            <CourseWorkflowPricingGrid tiers={COURSE_TIERS} comparison={COURSE_COMPARISON} />
-          </div>
-        </section>
-
-        {/* ── OBJECTION HANDLING ── */}
-        <section className="py-20 px-4">
-          <div className="container mx-auto max-w-2xl">
-            <p className="text-xs font-semibold text-secondary uppercase tracking-widest text-center mb-3">
-              Objections
-            </p>
-            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10">
-              Still on the fence?
-            </h2>
-            <div className="space-y-4">
-              {[
-                {
-                  q: "Is this for beginners?",
-                  a: "Yes. The workflow is designed to be clear even if you've never pulled financial data before. Tier 2 walks you through every step of the process from zero.",
-                },
-                {
-                  q: "What software do I need?",
-                  a: "The full software stack is revealed in Tier 2. No expensive subscriptions required — the workflow uses accessible tools most creators can get immediately.",
-                },
-                {
-                  q: "What format are the materials?",
-                  a: "PDF guides and video files. Tier 3 includes finished MP4 chart videos, CSV files, and caption templates ready to use as-is.",
-                },
-                {
-                  q: "Is this a subscription?",
-                  a: "No. One-time payment, instant access. You keep everything you download.",
-                },
-                {
-                  q: "What if the ideas don't fit my niche?",
-                  a: "The 50 frameworks cover macro, stocks, real estate, debt, and more. The narrative structure adapts to any data-driven finance topic.",
-                },
-                {
-                  q: "How is this different from the custom chart service?",
-                  a: "The custom chart service is done-for-you — we build the charts. This course teaches you the system so you can build charts yourself at scale. Different buyer, different outcome.",
-                },
-              ].map(({ q, a }, i) => (
-                <div key={i} className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="font-semibold mb-2 text-sm">{q}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── DUAL-OFFER BRIDGE ── */}
-        <section className="py-12 px-4 border-t border-border">
-          <div className="container mx-auto max-w-3xl">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest text-center mb-6">
-              Two ways to work with YungGeeski
-            </p>
-            <div className="grid sm:grid-cols-2 gap-5">
-              <div className="rounded-2xl border-2 border-secondary bg-secondary/5 p-6">
-                <div className="text-xs font-bold text-secondary uppercase tracking-wider mb-2">
-                  Learn the System
-                </div>
-                <h3 className="font-bold text-lg mb-2">Workflow &amp; Course</h3>
-                <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-                  50 viral chart ideas + the exact workflow. Build your own charts at scale.
-                </p>
-                <Link
-                  href="#pricing"
-                  className="inline-flex items-center gap-2 rounded-xl bg-secondary text-secondary-foreground font-bold px-5 py-2.5 text-sm hover:bg-secondary/90 transition-colors"
-                >
-                  Get Instant Access
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-6">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                  Done-For-You
-                </div>
-                <h3 className="font-bold text-lg mb-2">Custom Chart Service</h3>
-                <p className="text-sm text-muted-foreground mb-5 leading-relaxed">
-                  We build your charts. Fixed price, fast turnaround, source-backed data.
-                </p>
-                <Link
-                  href="/charts"
-                  className="inline-flex items-center gap-2 rounded-xl border border-border text-foreground font-bold px-5 py-2.5 text-sm hover:bg-muted/50 transition-colors"
-                >
-                  See Chart Service
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── FINAL CTA ── */}
-        <section className="py-24 px-4 bg-gradient-to-b from-card/30 to-background">
-          <div className="container mx-auto max-w-xl text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-              Stop guessing. Start posting charts that perform.
-            </h2>
-            <p className="text-muted-foreground mb-8 leading-relaxed">
-              48M+ monthly views. One system. Instant access after purchase.
-            </p>
-            <Link
-              href="#pricing"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-secondary text-secondary-foreground font-bold px-8 py-4 text-base hover:bg-secondary/90 transition-colors shadow-lg shadow-secondary/20"
-            >
-              Get Instant Access
+          <h1 className="mb-5 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+            Turn Financial Data Into{" "}
+            <span className="text-secondary">Content People Actually Watch</span>
+          </h1>
+          <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            Yung Geeski creates data-driven finance videos for fintech companies, investing
+            platforms, financial publishers, and consumer brands.
+          </p>
+          <div className="mb-6 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href={INQUIRY_HREF} className={primaryCta}>
+              Request a Campaign
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <div className="flex items-center justify-center gap-4 mt-8">
-              {[
-                { icon: Check, text: "One-time payment" },
-                { icon: Check, text: "Instant download" },
-                { icon: Check, text: "No subscription" },
-              ].map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Icon className="h-3.5 w-3.5 text-secondary" />
-                  {text}
+            <Link href="/portfolio" className={secondaryCta}>
+              View Portfolio
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {formatCompact(m.totalFollowers)}+ {platformLabel ?? ""} followers
+            &nbsp;&nbsp;·&nbsp;&nbsp;Multiple videos above{" "}
+            {formatCompact(m.notableViewsThreshold)} views
+            &nbsp;&nbsp;·&nbsp;&nbsp;{formatCompact(m.monthlyReach)}+ views in 30 days
+          </p>
+        </div>
+      </section>
+
+      {/* ── PROOF: METRICS + STANDOUT POSTS ── */}
+      <section id="performance" className="scroll-mt-24 bg-card/30 px-4 py-20">
+        <div className="container mx-auto max-w-5xl">
+          <p className={eyebrow}>Performance</p>
+          <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl">
+            The numbers brands are buying
+          </h2>
+          <p className="mx-auto mb-10 max-w-lg text-center text-sm text-muted-foreground">
+            Reach and engagement built on finance and business content — not vanity views.
+            {platformLabel && <> All figures below are {platformLabel} only.</>}
+          </p>
+
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {performanceMetrics.map(({ label, value }) => (
+              <div
+                key={label}
+                className="rounded-xl border border-border bg-card px-4 py-5 text-center"
+              >
+                <p className="text-xl font-bold text-secondary sm:text-2xl">{value}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+          {asOfNote && (
+            <p className="mb-14 text-center text-[11px] text-muted-foreground/70">{asOfNote}</p>
+          )}
+
+          <h3 className="mb-6 text-center text-lg font-semibold">Recent standout posts</h3>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {portfolio.map((post) => (
+              <PortfolioCard key={post.id} post={post} />
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/portfolio" className={secondaryCta}>
+              See the full portfolio
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link href={INQUIRY_HREF} className={primaryCta}>
+              Request a Campaign
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CASE STUDY ── */}
+      <section id="case-study" className="scroll-mt-24 px-4 py-20">
+        <div className="container mx-auto max-w-4xl">
+          <p className={eyebrow}>Case Study</p>
+          <h2 className="mb-4 flex justify-center">
+            <CaseStudyLogo src={caseStudy.logo} client={caseStudy.client} />
+          </h2>
+          <p className="mx-auto mb-10 max-w-lg text-center text-sm text-muted-foreground">
+            A native chart campaign built around a single, trackable comment CTA.
+          </p>
+
+          {/* Lead with the outcome; objective/approach support it. */}
+          {caseStudy.keyResult && (
+            <div className="mb-5 flex items-start gap-3 rounded-2xl border border-secondary/30 bg-secondary/5 p-6">
+              <Quote className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden />
+              <p className="text-sm leading-relaxed sm:text-base">{caseStudy.keyResult}</p>
+            </div>
+          )}
+
+          {/* Results — gated: only render the metric grid once verified numbers exist,
+              otherwise a clean placeholder instead of a row of em-dashes. */}
+          <div className="rounded-2xl border border-border bg-card p-6">
+            <h3 className="mb-1 text-sm font-semibold uppercase tracking-wide text-secondary">
+              Results
+            </h3>
+            {caseStudyHasResults ? (
+              <>
+                {caseStudy.resultsScope && (
+                  <p className="mb-4 text-xs text-muted-foreground">{caseStudy.resultsScope}</p>
+                )}
+                {caseStudyCharts.length > 0 ? (
+                  <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                    {caseStudyCharts.map((chart) => (
+                      <DonutChart key={chart.id} chart={chart} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {caseStudy.results
+                      .filter((r) => r.value !== null)
+                      .map((r) => (
+                        <div
+                          key={r.label}
+                          className="rounded-xl border border-border/60 bg-background/40 px-4 py-4 text-center"
+                        >
+                          <p className="text-lg font-bold text-foreground">{r.value}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{r.label}</p>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                Verified campaign results are being finalized and will be published here.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-5 grid gap-5 md:grid-cols-3">
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
+                Objective
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {caseStudy.objective}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border bg-card p-6">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
+                Campaign
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {caseStudy.approach}
+              </p>
+            </div>
+            {caseStudy.deliverables.length > 0 && (
+              <div className="rounded-2xl border border-border bg-card p-6">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-secondary">
+                  Deliverables
+                </h3>
+                <ul className="mt-2 space-y-2">
+                  {caseStudy.deliverables.map((d) => (
+                    <li key={d} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden />
+                      <span className="leading-relaxed">{d}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Comment proof */}
+          {caseStudy.screenshots.length > 0 && (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              {caseStudy.screenshots.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={src}
+                  src={src}
+                  alt={`${caseStudy.client} campaign comment section ${i + 1}`}
+                  className="w-full rounded-2xl border border-border"
+                />
+              ))}
+            </div>
+          )}
+
+          {caseStudy.disclosure && (
+            <p className="mt-6 text-center text-xs text-muted-foreground">{caseStudy.disclosure}</p>
+          )}
+        </div>
+      </section>
+
+      <CtaBand
+        title="Want measurable intent, not just views?"
+        body="Tell us what you're promoting and who you need to reach. We'll come back with a chart concept built around it."
+        secondary={{ href: "/portfolio", label: "Browse the portfolio" }}
+      />
+
+      {/* ── OFFER ── */}
+      <section id="services" className="scroll-mt-24 bg-card/30 px-4 py-20">
+        <div className="container mx-auto max-w-5xl">
+          <p className={eyebrow}>What You Get</p>
+          <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl">
+            Everything handled, brief to publish
+          </h2>
+          <p className="mx-auto mb-10 max-w-xl text-center text-sm text-muted-foreground">
+            {CAMPAIGN_SCOPE_NOTE}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {CAMPAIGN_INCLUDES.map(({ title, desc }) => (
+              <div key={title} className="rounded-2xl border border-border bg-card p-5">
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary/15">
+                    <Check className="h-3.5 w-3.5 text-secondary" aria-hidden />
+                  </span>
+                  <h3 className="text-sm font-semibold">{title}</h3>
+                </div>
+                <p className="text-sm leading-relaxed text-muted-foreground">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── PROCESS ── */}
+          <h3 className="mb-6 mt-16 text-center text-lg font-semibold">How a campaign runs</h3>
+          <ol className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {PROCESS_STEPS.map(({ icon: Icon, title, desc }, i) => (
+              <li key={title} className="rounded-xl border border-border bg-card p-5">
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary/10">
+                    <Icon className="h-4 w-4 text-secondary" />
+                  </span>
+                  <span className="text-xs font-bold text-muted-foreground">0{i + 1}</span>
+                </div>
+                <h4 className="mb-2 text-sm font-semibold">{title}</h4>
+                <p className="text-xs leading-relaxed text-muted-foreground">{desc}</p>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-10 flex justify-center">
+            <Link href={INQUIRY_HREF} className={primaryCta}>
+              Start with a brief
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FIT + FAQ ── */}
+      <section className="px-4 py-20">
+        <div className="container mx-auto grid max-w-5xl gap-14 lg:grid-cols-2 lg:gap-10">
+          <div>
+            <p className={`${eyebrow} lg:text-left`}>Brand Fit</p>
+            <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl lg:text-left">
+              Best suited for
+            </h2>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {BRAND_FIT.map((item) => (
+                <div
+                  key={item}
+                  className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-3"
+                >
+                  <Check className="h-4 w-4 shrink-0 text-secondary" aria-hidden />
+                  <span className="text-sm">{item}</span>
                 </div>
               ))}
             </div>
+            <p className="mt-6 text-center text-xs leading-relaxed text-muted-foreground lg:text-left">
+              {DISCLOSURE_STATEMENT}
+            </p>
           </div>
-        </section>
+          <div>
+            <p className={`${eyebrow} lg:text-left`}>FAQ</p>
+            <h2 className="mb-8 text-center text-2xl font-bold sm:text-3xl lg:text-left">
+              Before you reach out
+            </h2>
+            <BrandFaq />
+          </div>
+        </div>
+      </section>
 
+      {/* ── REQUEST FORM ── */}
+      <div className="border-t border-border bg-gradient-to-b from-card/30 to-background">
+        <InquirySection mediaKitHref={mediaKitAvailable ? MEDIA_KIT_HREF : null} />
       </div>
-
-      <StickyCtaBanner
-        href="#pricing"
-        label="Get Instant Access"
-        subtext="50 viral ideas + full workflow system"
-      />
-    </>
+    </div>
   );
 }
