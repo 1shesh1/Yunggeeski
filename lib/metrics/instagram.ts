@@ -57,15 +57,18 @@ async function igGet<T>(path: string, params: Record<string, string>): Promise<T
  * Best-effort long-lived token refresh (ig_refresh_token). Long-lived Instagram
  * tokens last ~60 days and can be refreshed once they're >24h old. Returns null
  * on failure so the caller keeps the existing token.
+ *
+ * An UNKNOWN expiry counts as due: a token pasted into IG_LONG_LIVED_TOKEN has
+ * no stored expiry, and skipping it is how the env token silently lapsed after
+ * 60 days. Once refreshed, the expiry is persisted and this only fires in the
+ * final week.
  */
 async function maybeRefreshToken(
-  storedToken: SocialTokenRow | null,
+  expiresAt: string | null | undefined,
   currentToken: string,
 ): Promise<{ accessToken: string; refreshed: RefreshedToken } | null> {
-  const nearExpiry = storedToken?.expires_at
-    ? Date.parse(storedToken.expires_at) - Date.now() < REFRESH_SKEW_MS
-    : false;
-  if (!nearExpiry) return null;
+  const due = expiresAt ? Date.parse(expiresAt) - Date.now() < REFRESH_SKEW_MS : true;
+  if (!due) return null;
   try {
     const qs = new URLSearchParams({
       grant_type: "ig_refresh_token",
@@ -124,6 +127,39 @@ async function fetchWindowReach(token: string, days: number): Promise<number | n
   }
 }
 
+/** True when Instagram accepts the token (cheap `me?fields=id` probe). */
+async function tokenWorks(token: string): Promise<boolean> {
+  try {
+    await igGet<{ id?: string }>("me", { fields: "id", access_token: token });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pick a working token: the DB-stored one (kept fresh by refreshes) first, then
+ * IG_LONG_LIVED_TOKEN. Falling through to the env token is what lets a newly
+ * pasted token replace a dead stored one — before, the stored token always won,
+ * so updating the env var alone changed nothing.
+ */
+export async function resolveToken(
+  config: InstagramApiConfig,
+  storedToken: SocialTokenRow | null,
+): Promise<{ token: string; expiresAt: string | null; fromEnv: boolean }> {
+  const stored = storedToken?.access_token ?? null;
+  const env = config.longLivedToken ?? null;
+  if (stored && (await tokenWorks(stored))) {
+    return { token: stored, expiresAt: storedToken?.expires_at ?? null, fromEnv: false };
+  }
+  if (env && env !== stored && (await tokenWorks(env))) {
+    return { token: env, expiresAt: null, fromEnv: true };
+  }
+  throw new Error(
+    "Instagram token rejected — generate a new long-lived token and set IG_LONG_LIVED_TOKEN",
+  );
+}
+
 export function isInstagramConfigured(_config: InstagramApiConfig, token: SocialTokenRow | null): boolean {
   return Boolean(token?.access_token || _config.longLivedToken);
 }
@@ -136,13 +172,18 @@ export async function fetchInstagramMetrics(
   config: InstagramApiConfig,
   storedToken: SocialTokenRow | null,
 ): Promise<PlatformFetchResult> {
-  let token = storedToken?.access_token ?? config.longLivedToken;
-  if (!token) {
+  if (!storedToken?.access_token && !config.longLivedToken) {
     throw new Error("Instagram not configured (need an access token)");
   }
+  const resolved = await resolveToken(config, storedToken);
+  let token = resolved.token;
 
-  let refreshedToken: RefreshedToken | undefined;
-  const refresh = await maybeRefreshToken(storedToken, token);
+  // Persist an env token we fell back to, so the refresh below (and future
+  // runs) operate on it and its expiry gets recorded.
+  let refreshedToken: RefreshedToken | undefined = resolved.fromEnv
+    ? { accessToken: token, expiresAt: null }
+    : undefined;
+  const refresh = await maybeRefreshToken(resolved.expiresAt, token);
   if (refresh) {
     token = refresh.accessToken;
     refreshedToken = refresh.refreshed;
