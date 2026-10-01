@@ -9,7 +9,11 @@ import { hasViews, postTitle } from "@/lib/portfolio";
 
 const SWIPE_PX = 50;
 
-/** Plays with sound when the browser allows it (the open was a click), else falls back to muted. */
+/**
+ * Chrome-free video: no native controls (no pause/volume/skip buttons). Plays
+ * with sound when the browser allows it (the open was a click), else muted.
+ * A tap toggles pause — or, if the browser forced it muted, turns sound on.
+ */
 function LightboxVideo({ src, label }: { src: string; label: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
@@ -23,6 +27,19 @@ function LightboxVideo({ src, label }: { src: string; label: string }) {
     });
   }, []);
 
+  const onTap = () => {
+    const v = ref.current;
+    if (!v) return;
+    if (v.muted) {
+      v.muted = false;
+      if (v.paused) v.play().catch(() => {});
+    } else if (v.paused) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  };
+
   if (failed) {
     return (
       <div className="flex h-full w-full items-center justify-center text-sm text-white/60">
@@ -35,18 +52,20 @@ function LightboxVideo({ src, label }: { src: string; label: string }) {
       ref={ref}
       src={src}
       aria-label={label}
-      controls
       loop
       playsInline
-      className="h-full w-full bg-black object-contain"
+      disablePictureInPicture
+      onClick={onTap}
+      onContextMenu={(e) => e.preventDefault()}
+      className="h-full w-full cursor-pointer bg-black object-contain"
       onError={() => setFailed(true)}
     />
   );
 }
 
 /**
- * Near-full-screen player for the active carousel post: the video with native
- * controls and sound, prev/next (buttons, swipe, ←/→), and a compact
+ * Near-full-screen player for the active carousel post: the bare video with
+ * sound (no player controls), prev/next (buttons, swipe, ←/→), and a compact
  * icon-and-number metrics strip along the bottom.
  */
 export function PostLightbox({
