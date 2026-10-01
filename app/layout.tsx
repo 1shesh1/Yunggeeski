@@ -24,7 +24,8 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <div className="min-h-screen flex flex-col">
-          <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
+          {/* On mobile, HeaderNav slides this up with the scroll (--mobile-header-offset). */}
+          <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 max-md:will-change-transform max-md:[transform:translate3d(0,calc(var(--mobile-header-offset,0px)*-1),0)]">
             <div className="container mx-auto w-full max-w-[100vw] px-3 sm:px-4 md:px-4">
               <HeaderNav />
             </div>
