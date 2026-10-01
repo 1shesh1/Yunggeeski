@@ -58,3 +58,61 @@ export function postTitle(post: Pick<PortfolioPost, "topic" | "caption">): strin
 export function platformName(platform: PortfolioPost["platform"]): string {
   return platform === "tiktok" ? "TikTok" : "Instagram";
 }
+
+/** False when a post's view count isn't known (e.g. pinned posts with no synced insights). */
+export function hasViews(post: Pick<PortfolioPost, "views">): boolean {
+  return post.views > 0;
+}
+
+/**
+ * Posts shown on /portfolio after the admin-featured ones, without needing a
+ * DB row. Newer reels may not be synced yet (and untitled synced rows are hard
+ * to find in /admin), so these are pinned here. If a matching row exists in the
+ * DB its live metrics win; these figures are the fallback. Instagram doesn't
+ * expose view counts publicly — `views: 0` means "not known" and hides the
+ * views badge and engagement rate. Likes/comments as of Oct 1, 2026.
+ */
+export const PINNED_PORTFOLIO: PortfolioPost[] = [
+  {
+    id: "DdXGAx1OPjr",
+    platform: "instagram",
+    topic: "Does the Zodiac Affect Stocks?",
+    whyItWorked:
+      "A playful premise backed by 97 years of S&P 500 data. Every viewer has a sign, so every viewer had a stake in the ranking — and an 8x gap between Capricorn and Virgo gave them something to argue about.",
+    caption: "Apparently the stock market has a favorite zodiac sign.",
+    views: 0,
+    likes: 8_320,
+    comments: 365,
+    permalink: "https://www.instagram.com/reel/DdXGAx1OPjr/",
+    thumbnailUrl: null,
+    videoUrl: portfolioVideoPath("https://www.instagram.com/reel/DdXGAx1OPjr/"),
+  },
+  {
+    id: "DdFEWy_uZkb",
+    platform: "instagram",
+    topic: "Should You Ever Move Out of Your Parents' House?",
+    whyItWorked:
+      "Priced the most relatable money decision of early adulthood over 30 years. One starting balance, four paths, and a $2.69M-to-negative spread that challenged the idea that buying is always the smart move.",
+    caption: "What if moving out of your parents’ house cost you millions?",
+    views: 0,
+    likes: 2_242,
+    comments: 102,
+    permalink: "https://www.instagram.com/reel/DdFEWy_uZkb/",
+    thumbnailUrl: null,
+    videoUrl: portfolioVideoPath("https://www.instagram.com/reel/DdFEWy_uZkb/"),
+  },
+  {
+    id: "DXhukpDj_fj",
+    platform: "instagram",
+    topic: "Which Day of the Week Drives Stock Returns?",
+    whyItWorked:
+      "Split the S&P 500 into five weekday-only strategies and let them race. The lopsided result — Tuesday far ahead, Thursday barely contributing — upended the assumption that returns are spread evenly across the week.",
+    caption: "Which day of the week actually drives stock market returns?",
+    views: 0,
+    likes: 5_983,
+    comments: 117,
+    permalink: "https://www.instagram.com/reel/DXhukpDj_fj/",
+    thumbnailUrl: null,
+    videoUrl: portfolioVideoPath("https://www.instagram.com/reel/DXhukpDj_fj/"),
+  },
+];
