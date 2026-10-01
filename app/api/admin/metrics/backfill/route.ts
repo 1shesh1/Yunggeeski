@@ -15,6 +15,7 @@ import {
   fetchInstagramMediaList,
   fetchInstagramPostsByIds,
   isInstagramConfigured,
+  resolveToken,
 } from "@/lib/metrics/instagram";
 
 export const dynamic = "force-dynamic";
@@ -37,9 +38,14 @@ export async function POST(request: NextRequest) {
   if (!isInstagramConfigured(config, stored)) {
     return NextResponse.json({ error: "Instagram not configured" }, { status: 503 });
   }
-  const token = stored?.access_token ?? config.longLivedToken;
-  if (!token) {
-    return NextResponse.json({ error: "No Instagram token" }, { status: 503 });
+  let token: string;
+  try {
+    token = (await resolveToken(config, stored)).token;
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "No working Instagram token" },
+      { status: 503 },
+    );
   }
 
   const url = new URL(request.url);
