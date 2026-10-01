@@ -30,6 +30,26 @@ const API_BASE = "https://graph.instagram.com/v21.0";
 const REFRESH_URL = "https://graph.instagram.com/refresh_access_token";
 const MEDIA_LIMIT = 30;
 const REFRESH_SKEW_MS = 7 * 86_400_000; // refresh when <7 days to expiry
+/**
+ * Parallel Instagram calls in flight at once. Netlify cuts synchronous
+ * functions off at ~10s, so per-post calls can't run one by one; a small pool
+ * keeps well under that without bursting the API.
+ */
+const IG_CONCURRENCY = 6;
+
+/** Map with at most `limit` promises in flight; preserves input order. */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
 
 interface IgMedia {
   id: string;
@@ -208,11 +228,10 @@ export async function fetchInstagramMetrics(
   });
   const media = mediaResp.data ?? [];
 
-  const posts: PlatformPost[] = [];
-  for (const m of media) {
+  const posts: PlatformPost[] = await mapLimit(media, IG_CONCURRENCY, async (m) => {
     const isVideo = m.media_type === "VIDEO" || m.media_type === "REELS";
     const { views, saves } = isVideo ? await fetchMediaViews(m.id, token) : { views: 0, saves: null };
-    posts.push({
+    return {
       externalId: m.id,
       caption: m.caption ?? null,
       permalink: m.permalink ?? null,
@@ -222,8 +241,8 @@ export async function fetchInstagramMetrics(
       comments: m.comments_count ?? 0,
       shares: null,
       saves,
-    });
-  }
+    };
+  });
 
   const [reach30d, reach90d] = await Promise.all([
     fetchWindowReach(token, 30),
@@ -259,22 +278,28 @@ export interface IgListItem {
 }
 
 /**
- * Paginate the FULL media history — cheap (likes/comments come free in the list,
- * no per-post insights). One call per page; bounded by `maxPages`.
+ * One slice of the full media-list crawl: up to `maxPages` pages of 100,
+ * starting after `after` (an opaque cursor from a previous slice). Returns the
+ * cursor for the next slice, or null when the list is exhausted. Sliced so each
+ * backfill request stays inside the serverless time limit.
  */
-export async function fetchInstagramMediaList(token: string, maxPages = 50): Promise<IgListItem[]> {
+export async function fetchInstagramMediaList(
+  token: string,
+  { after = null, maxPages = 3 }: { after?: string | null; maxPages?: number } = {},
+): Promise<{ items: IgListItem[]; next: string | null }> {
   const items: IgListItem[] = [];
-  let url:
-    | string
-    | null = `${API_BASE}/me/media?fields=id,caption,permalink,media_type,thumbnail_url,media_url,like_count,comments_count&limit=100&access_token=${encodeURIComponent(token)}`;
-  let page = 0;
-  while (url && page < maxPages) {
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Instagram media list ${res.status}: ${body.slice(0, 200)}`);
-    }
-    const json = (await res.json()) as { data?: (IgMedia & { id: string })[]; paging?: { next?: string } };
+  let cursor = after;
+  for (let page = 0; page < maxPages; page++) {
+    const params: Record<string, string> = {
+      fields: "id,caption,permalink,media_type,thumbnail_url,media_url,like_count,comments_count",
+      limit: "100",
+      access_token: token,
+    };
+    if (cursor) params.after = cursor;
+    const json = await igGet<{
+      data?: (IgMedia & { id: string })[];
+      paging?: { next?: string; cursors?: { after?: string } };
+    }>("me/media", params);
     for (const m of json.data ?? []) {
       items.push({
         externalId: m.id,
@@ -285,10 +310,11 @@ export async function fetchInstagramMediaList(token: string, maxPages = 50): Pro
         comments: m.comments_count ?? 0,
       });
     }
-    url = json.paging?.next ?? null;
-    page += 1;
+    // Only a `next` link means another page exists; the cursor alone doesn't.
+    cursor = json.paging?.next ? (json.paging.cursors?.after ?? null) : null;
+    if (!cursor) break;
   }
-  return items;
+  return { items, next: cursor };
 }
 
 /**
@@ -297,8 +323,7 @@ export async function fetchInstagramMediaList(token: string, maxPages = 50): Pro
  * Skips (omits) any ID that errors so callers can retry those later.
  */
 export async function fetchInstagramPostsByIds(token: string, ids: string[]): Promise<PlatformPost[]> {
-  const out: PlatformPost[] = [];
-  for (const id of ids) {
+  const results = await mapLimit(ids, IG_CONCURRENCY, async (id): Promise<PlatformPost | null> => {
     try {
       const m = await igGet<IgMedia & { id: string }>(id, {
         fields: "id,caption,permalink,media_type,thumbnail_url,media_url,like_count,comments_count",
@@ -308,7 +333,7 @@ export async function fetchInstagramPostsByIds(token: string, ids: string[]): Pr
       const { views, saves } = isVideo
         ? await fetchMediaViews(m.id, token)
         : { views: 0, saves: null };
-      out.push({
+      return {
         externalId: m.id,
         caption: m.caption ?? null,
         permalink: m.permalink ?? null,
@@ -318,10 +343,11 @@ export async function fetchInstagramPostsByIds(token: string, ids: string[]): Pr
         comments: m.comments_count ?? 0,
         shares: null,
         saves,
-      });
+      };
     } catch {
       // Skip — left unmarked so backfill/tracking retries it next run.
+      return null;
     }
-  }
-  return out;
+  });
+  return results.filter((p): p is PlatformPost => p !== null);
 }

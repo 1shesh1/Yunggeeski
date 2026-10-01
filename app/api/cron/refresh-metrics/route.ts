@@ -4,7 +4,7 @@ import {
   getSupabase,
   getSocialToken,
   insertSnapshot,
-  upsertApiPost,
+  upsertApiPosts,
   upsertSocialToken,
   deleteSnapshotsOlderThan,
   getLatestSnapshots,
@@ -47,8 +47,8 @@ async function persist(platform: "instagram" | "tiktok", result: PlatformFetchRe
     notable_views_threshold: result.snapshot.notableViewsThreshold,
     raw: result.snapshot.raw,
   });
-  for (const p of result.posts) {
-    await upsertApiPost({
+  await upsertApiPosts(
+    result.posts.map((p) => ({
       platform,
       external_id: p.externalId,
       caption: p.caption,
@@ -60,8 +60,8 @@ async function persist(platform: "instagram" | "tiktok", result: PlatformFetchRe
       shares: p.shares,
       saves: p.saves,
       fetched_at: fetchedAt,
-    });
-  }
+    })),
+  );
   if (result.token) {
     await upsertSocialToken({
       platform,
@@ -101,9 +101,9 @@ async function runInstagram(): Promise<PlatformResult> {
       if (trackedIds.length > 0) {
         const posts = await fetchInstagramPostsByIds(effectiveToken, trackedIds);
         const fetchedAt = new Date().toISOString();
-        for (const p of posts) {
-          await upsertApiPost({
-            platform: "instagram",
+        await upsertApiPosts(
+          posts.map((p) => ({
+            platform: "instagram" as const,
             external_id: p.externalId,
             caption: p.caption,
             permalink: p.permalink,
@@ -114,8 +114,8 @@ async function runInstagram(): Promise<PlatformResult> {
             shares: p.shares,
             saves: p.saves,
             fetched_at: fetchedAt,
-          });
-        }
+          })),
+        );
         tracked = posts.length;
       }
     }

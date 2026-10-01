@@ -219,14 +219,31 @@ export function MetricsPanel() {
     await load();
   }
 
-  async function backfill(phase: string): Promise<{ remaining: number; done: boolean; processed?: number; listed?: number } | null> {
-    const res = await fetch(`/api/admin/metrics/backfill?phase=${phase}`, {
+  async function backfill(
+    phase: "list" | "insights",
+    after?: string | null,
+  ): Promise<{
+    remaining?: number;
+    done: boolean;
+    processed?: number;
+    listed?: number;
+    next?: string | null;
+  } | null> {
+    const qs = new URLSearchParams({ phase });
+    if (after) qs.set("after", after);
+    const res = await fetch(`/api/admin/metrics/backfill?${qs}`, {
       method: "POST",
       credentials: "include",
     });
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(typeof data.error === "string" ? data.error : "Backfill failed");
+      const data = await res.json().catch(() => null);
+      if (data && typeof data.error === "string") throw new Error(data.error);
+      // No JSON body: the host killed the request (e.g. a function timeout).
+      throw new Error(
+        res.status === 502 || res.status === 504
+          ? `Sync request timed out (HTTP ${res.status}). Run it again — progress is saved.`
+          : `Sync failed (HTTP ${res.status}).`,
+      );
     }
     return res.json();
   }
@@ -235,8 +252,17 @@ export function MetricsPanel() {
     setBackfilling(true);
     setBackfillMsg("Crawling your full post list…");
     try {
-      const list = await backfill("list");
-      setBackfillMsg(`Listed ${list?.listed ?? 0} posts. Fetching view counts for top posts…`);
+      // The list crawl comes back in slices; follow the cursor to the end.
+      let listed = 0;
+      let after: string | null = null;
+      for (let i = 0; i < 100; i++) {
+        const slice = await backfill("list", after);
+        listed += slice?.listed ?? 0;
+        after = slice?.next ?? null;
+        if (!after) break;
+        setBackfillMsg(`Crawling your full post list… ${listed} so far`);
+      }
+      setBackfillMsg(`Listed ${listed} posts. Fetching view counts for top posts…`);
       // Loop insights chunks until done or no progress (rate limit / nothing left).
       for (let i = 0; i < 40; i++) {
         const r = await backfill("insights");
