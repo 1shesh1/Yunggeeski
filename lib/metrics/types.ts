@@ -12,8 +12,13 @@ export type Platform = "instagram" | "tiktok";
 
 /** Account-level headline metrics shown in the hero proof line + performance row. */
 export interface AccountMetrics {
-  /** Combined follower total across platforms. */
+  /** Combined follower total across synced platforms. */
   totalFollowers: number;
+  /**
+   * Followers per synced platform, so a page can label a single platform's
+   * count honestly (e.g. "Instagram followers") even once more platforms sync.
+   */
+  followersByPlatform: Partial<Record<Platform, number>>;
   /** Views on the single best-performing video. */
   bestVideoViews: number;
   /** Count of videos above the notable-views threshold (see `notableViewsThreshold`). */
@@ -75,6 +80,27 @@ export interface MetricsResult<T> {
 
 /** Default "notable views" threshold for counting standout videos. */
 export const NOTABLE_VIEWS_THRESHOLD = 4_000_000;
+
+/** One bucket of a follower breakdown, as the raw count Instagram reports. */
+export interface DemographicCount {
+  /** Instagram's dimension value: "25-34", "F", "US", "London, England". */
+  key: string;
+  count: number;
+}
+
+/**
+ * Instagram follower demographics + 30-day views, stored on the snapshot's
+ * `raw.audience` by the refresh job. Any part the API didn't return is
+ * empty/null — never estimated.
+ */
+export interface InstagramAudienceRaw {
+  age: DemographicCount[];
+  gender: DemographicCount[];
+  country: DemographicCount[];
+  city: DemographicCount[];
+  /** Total views across the account in the trailing 30 days. */
+  views30d: number | null;
+}
 
 // —— Platform client contracts (refresh job side) ——
 

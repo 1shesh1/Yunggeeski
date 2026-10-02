@@ -83,41 +83,64 @@ export function budgetLabel(value: string): string {
   return BUDGET_OPTIONS.find((o) => o.value === value)?.label ?? value;
 }
 
+/** Blank optional inputs arrive as "" — treat them as not provided. */
+const blankToUndefined = (v: unknown) =>
+  typeof v === "string" && v.trim() === "" ? undefined : v;
+
+/** Optional free-text field: trimmed, capped, and absent when left blank. */
+const optionalText = (max: number) =>
+  z.preprocess(blankToUndefined, z.string().trim().max(max).optional());
+
+/**
+ * The inquiry is deliberately short: only who you are and what you have in
+ * mind are required, so a prospect arriving from cold outreach can reach out
+ * in under a minute. Campaign specifics are optional and usually settled on
+ * the follow-up call.
+ */
 export const brandInquirySchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(120),
-  company: z.string().trim().min(1, "Company is required").max(200),
-  work_email: z.string().trim().min(1, "Work email is required").email("Enter a valid email").max(200),
-  company_website: z
+  company: z.string().trim().min(1, "Company or organization is required").max(200),
+  work_email: z.string().trim().min(1, "Email is required").email("Enter a valid email").max(200),
+  collaboration: z
     .string()
     .trim()
-    .min(1, "Company website is required")
-    .max(300)
-    .refine((v) => {
-      try {
-        const url = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
-        return url.hostname.includes(".");
-      } catch {
-        return false;
-      }
-    }, "Enter a valid website (e.g. company.com)"),
-  product_or_service: z.string().trim().min(1, "Product or service is required").max(2000),
-  campaign_objective: z.string().trim().min(1, "Campaign objective is required").max(2000),
-  budget: z.enum(BUDGET_VALUES, {
-    errorMap: () => ({ message: "Select an estimated budget" }),
-  }),
-  launch_date: z
-    .string()
-    .trim()
-    .min(1, "Desired launch date is required")
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date (YYYY-MM-DD)"),
-  deliverables: z.string().trim().min(1, "Requested deliverables are required").max(2000),
-  paid_ads_required: z.enum(YES_NO, {
-    errorMap: () => ({ message: "Select yes or no" }),
-  }),
-  category_exclusivity_required: z.enum(YES_NO, {
-    errorMap: () => ({ message: "Select yes or no" }),
-  }),
-  additional_info: z.string().trim().max(4000).optional(),
+    .min(1, "Tell me a little about what you have in mind")
+    .max(4000),
+
+  // —— Optional campaign details ——
+  company_website: z.preprocess(
+    blankToUndefined,
+    z
+      .string()
+      .trim()
+      .max(300)
+      .refine((v) => {
+        try {
+          const url = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`);
+          return url.hostname.includes(".");
+        } catch {
+          return false;
+        }
+      }, "Enter a valid website (e.g. company.com)")
+      .optional(),
+  ),
+  product_or_service: optionalText(2000),
+  budget: z.preprocess(
+    blankToUndefined,
+    z.enum(BUDGET_VALUES, { errorMap: () => ({ message: "Select an estimated budget" }) }).optional(),
+  ),
+  launch_date: z.preprocess(
+    blankToUndefined,
+    z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date (YYYY-MM-DD)")
+      .optional(),
+  ),
+  deliverables: optionalText(2000),
+  paid_ads_required: z.preprocess(blankToUndefined, z.enum(YES_NO).optional()),
+  category_exclusivity_required: z.preprocess(blankToUndefined, z.enum(YES_NO).optional()),
+  additional_info: optionalText(4000),
 });
 
 export type BrandInquiryData = z.infer<typeof brandInquirySchema>;

@@ -1,10 +1,36 @@
 import Link from "next/link";
-import { ArrowRight, Download } from "lucide-react";
-import { INQUIRY_ANCHOR, PARTNERSHIPS_EMAIL } from "@/lib/site";
+import { ArrowRight, Download, Mail } from "lucide-react";
+import { INQUIRY_ANCHOR, PARTNERSHIPS_EMAIL, PARTNERSHIPS_MAILTO } from "@/lib/site";
+import { cn } from "@/lib/utils";
 import { BrandInquiryForm } from "./BrandInquiryForm";
 import { INQUIRY_HREF, eyebrow, primaryCta, secondaryCta } from "./styles";
 
 /** Shared sections for the brand funnel (landing page + /portfolio). */
+
+/**
+ * The two ways to reach out, side by side: jump to the contact section, or
+ * open an email straight away. Placed wherever a reader might be convinced.
+ */
+export function ContactButtons({
+  className,
+  primaryLabel = "Let's Work Together",
+}: {
+  className?: string;
+  primaryLabel?: string;
+}) {
+  return (
+    <div className={cn("flex flex-col justify-center gap-3 sm:flex-row", className)}>
+      <Link href={INQUIRY_HREF} className={primaryCta}>
+        {primaryLabel}
+        <ArrowRight className="h-4 w-4" />
+      </Link>
+      <a href={PARTNERSHIPS_MAILTO} className={secondaryCta}>
+        <Mail className="h-4 w-4" aria-hidden />
+        Email Me
+      </a>
+    </div>
+  );
+}
 
 /** A full-width conversion band placed after a proof section. */
 export function CtaBand({
@@ -25,7 +51,7 @@ export function CtaBand({
         )}
         <div className="flex flex-col justify-center gap-3 sm:flex-row">
           <Link href={INQUIRY_HREF} className={primaryCta}>
-            Request a Campaign
+            Let&apos;s Work Together
             <ArrowRight className="h-4 w-4" />
           </Link>
           {secondary && (
@@ -39,9 +65,13 @@ export function CtaBand({
   );
 }
 
-/** The campaign request form section. Anchored at #inquiry wherever it renders. */
+/**
+ * The contact section, anchored at #inquiry wherever it renders: "Email Me"
+ * for people who'd rather write directly, and the short inquiry form for
+ * everyone else. Side by side on desktop, email first on mobile.
+ */
 export function InquirySection({
-  heading = "Tell us about your campaign",
+  heading = "Let's work together",
   mediaKitHref,
 }: {
   heading?: string;
@@ -50,17 +80,41 @@ export function InquirySection({
 }) {
   return (
     <section id={INQUIRY_ANCHOR} className="scroll-mt-24 px-4 py-20">
-      <div className="container mx-auto max-w-2xl">
-        <p className={eyebrow}>Request a Campaign</p>
+      <div className="container mx-auto max-w-4xl">
+        <p className={eyebrow}>Get in Touch</p>
         <h2 className="mb-3 text-center text-2xl font-bold sm:text-3xl">{heading}</h2>
-        <p className="mx-auto mb-8 max-w-lg text-center text-sm text-muted-foreground">
-          Takes about two minutes. You&apos;ll get a confirmation right away, and a reply from{" "}
-          <span className="font-medium text-foreground">{PARTNERSHIPS_EMAIL}</span> once we&apos;ve
-          reviewed it.
+        <p className="mx-auto mb-10 max-w-lg text-center text-sm text-muted-foreground">
+          Have an idea, a product, or just a question? Email me directly or send a short note
+          below — no campaign brief needed.
         </p>
-        <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-          <BrandInquiryForm />
+
+        <div className="grid gap-5 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+          <div className="flex flex-col self-start rounded-2xl border border-secondary/30 bg-gradient-to-b from-secondary/10 to-secondary/[0.02] p-6 sm:p-8">
+            <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/15">
+              <Mail className="h-5 w-5 text-secondary" aria-hidden />
+            </div>
+            <h3 className="mb-2 text-lg font-bold">Email Me</h3>
+            <p className="mb-6 text-sm leading-relaxed text-muted-foreground">
+              Prefer your own inbox? Write to me directly and I&apos;ll reply from there.
+            </p>
+            <a href={PARTNERSHIPS_MAILTO} className={cn(primaryCta, "w-full px-5")}>
+              <Mail className="h-4 w-4" aria-hidden />
+              Email Me
+            </a>
+            <p className="mt-3 break-all text-center text-sm font-medium text-foreground">
+              {PARTNERSHIPS_EMAIL}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+            <h3 className="mb-1 text-lg font-bold">Submit an Inquiry</h3>
+            <p className="mb-6 text-sm text-muted-foreground">
+              Four quick fields. You&apos;ll get a confirmation right away.
+            </p>
+            <BrandInquiryForm />
+          </div>
         </div>
+
         {mediaKitHref && (
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Need something for an internal review first?{" "}

@@ -15,7 +15,7 @@ export interface SocialProofRepost {
   handle: string;
   /** Optional title shown under the name — omit unless it is uncontroversial. */
   descriptor?: string;
-  platformLabel: "Instagram" | "Truth Social";
+  platformLabel: "Instagram" | "Truth Social" | "Facebook";
   /** Account carries a platform verification badge. */
   verified: boolean;
   /** Link to the original post, so any claim here is checkable. */
@@ -26,8 +26,11 @@ export interface SocialProofRepost {
   action: string;
   /** Their own words, verbatim. Omit when they added no comment. */
   quote?: string;
-  /** Path under public/. Falls back to a placeholder card if the file is absent. */
-  screenshot: string;
+  /**
+   * Path under public/. Null until a capture exists — the card falls back to a
+   * placeholder (and the course page leaves the entry out).
+   */
+  screenshot: string | null;
   /**
    * Intrinsic pixel size of the screenshot. Per-entry rather than shared: the
    * captures come from different devices (phone ~9:19.5, desktop ~4:7), and
@@ -84,7 +87,26 @@ export const SOCIAL_PROOF_REPOSTS: SocialProofRepost[] = [
     height: 1517,
     alt: "Instagram reel by mandypatinkin reposting the “Which Political Party Grew the Debt More?” chart from @yunggeeski_",
   },
+  {
+    id: "nigel-green",
+    name: "Nigel Green",
+    handle: "nigel.green.devere",
+    descriptor: "Founder & CEO, deVere Group",
+    platformLabel: "Facebook",
+    verified: true,
+    permalink: "https://www.facebook.com/nigel.green.devere/videos/1260006368869644/",
+    chartTitle: "Gold vs Inflation",
+    action: "Shared the video, credited “via IG/yunggeeski_”",
+    screenshot: null,
+    width: 0,
+    height: 0,
+    alt: "Facebook video by Nigel Green sharing the Yung Geeski “Gold vs Inflation” chart, credited via IG/yunggeeski_",
+  },
 ];
 
 export const SOCIAL_PROOF_DISCLOSURE =
   "Public posts by the accounts shown, linked so you can verify each one. Sharing a chart is not an endorsement of this course.";
+
+/** The portfolio's version: brands, not course buyers, are reading it. */
+export const NOTABLE_REPOSTS_DISCLOSURE =
+  "Public posts by the accounts shown, linked so you can verify each one. Sharing a chart does not imply endorsement of, or any business relationship with, Yung Geeski.";

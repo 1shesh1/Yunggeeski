@@ -5,7 +5,7 @@ import { PARTNERSHIPS_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Request Received — Yung Geeski",
-  description: "Your campaign request has been received.",
+  description: "Your inquiry has been received.",
   robots: { index: false },
 };
 
@@ -19,7 +19,7 @@ export default function BrandInquiryThanksPage() {
         <h1 className="mb-4 text-3xl font-bold sm:text-4xl">Request received</h1>
         <p className="mx-auto mb-6 max-w-md leading-relaxed text-muted-foreground">
           Thanks for reaching out. A confirmation is on its way to your work email, and
-          you&apos;ll be contacted soon once we&apos;ve reviewed your brief.
+          you&apos;ll hear back soon.
         </p>
         <div className="mx-auto mb-10 flex max-w-md items-start gap-3 rounded-2xl border border-secondary/30 bg-secondary/5 p-4 text-left">
           <Mail className="mt-0.5 h-4 w-4 shrink-0 text-secondary" aria-hidden />

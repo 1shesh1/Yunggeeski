@@ -6,7 +6,15 @@
  */
 export const PARTNERSHIPS_EMAIL = "yunggeeski1@gmail.com";
 
-/** Anchor of the campaign request form. Rendered on the landing page and /portfolio. */
+/**
+ * Prefilled "Email Me" link for brand outreach. Opens the visitor's mail app
+ * addressed to PARTNERSHIPS_EMAIL — the zero-friction alternative to the form.
+ */
+export const PARTNERSHIPS_MAILTO = `mailto:${PARTNERSHIPS_EMAIL}?subject=${encodeURIComponent(
+  "Collaboration inquiry",
+)}`;
+
+/** Anchor of the contact section (Email Me + inquiry form). Rendered on the landing page and /portfolio. */
 export const INQUIRY_ANCHOR = "inquiry";
 
 export const SOCIAL = {
