@@ -9,9 +9,16 @@
  * Any read error degrades to fixtures rather than blanking the page.
  */
 
-import type { AccountMetrics, MetricsResult, Platform, PortfolioPost } from "./types";
+import type {
+  AccountMetrics,
+  InstagramAudienceRaw,
+  MetricsResult,
+  Platform,
+  PortfolioPost,
+} from "./types";
 import { FALLBACK_ACCOUNT_METRICS, FALLBACK_PLATFORMS, FALLBACK_PORTFOLIO } from "./fixtures";
 import {
+  getLatestSnapshot,
   getLatestSnapshots,
   getMetricOverride,
   getFeaturedSocialPosts,
@@ -43,6 +50,10 @@ function computeFromSnapshots(snapshots: SocialSnapshotRow[]): {
 
   const followers = snapshots.map((s) => s.followers).filter((v) => v > 0);
   const totalFollowers = followers.length ? sum(followers) : FALLBACK_ACCOUNT_METRICS.totalFollowers;
+  const followersByPlatform: AccountMetrics["followersByPlatform"] = {};
+  for (const s of snapshots) {
+    if (s.followers > 0) followersByPlatform[s.platform] = s.followers;
+  }
 
   const bestVals = present(snapshots.map((s) => s.best_video_views)).filter((v) => v > 0);
   const bestVideoViews = bestVals.length
@@ -69,6 +80,9 @@ function computeFromSnapshots(snapshots: SocialSnapshotRow[]): {
   return {
     metrics: {
       totalFollowers,
+      followersByPlatform: followers.length
+        ? followersByPlatform
+        : FALLBACK_ACCOUNT_METRICS.followersByPlatform,
       bestVideoViews,
       videosAboveThreshold,
       notableViewsThreshold,
@@ -91,8 +105,16 @@ function overrideHasValue(o: MetricOverrideRow): boolean {
 }
 
 function applyOverride(base: AccountMetrics, o: MetricOverrideRow): AccountMetrics {
+  // The override is a combined total. It can only stand in for a single
+  // platform's count while that platform is the only one synced.
+  const synced = Object.keys(base.followersByPlatform) as Platform[];
+  const followersByPlatform =
+    o.total_followers != null && synced.length === 1
+      ? { [synced[0]]: o.total_followers }
+      : base.followersByPlatform;
   return {
     totalFollowers: o.total_followers ?? base.totalFollowers,
+    followersByPlatform,
     bestVideoViews: o.best_video_views ?? base.bestVideoViews,
     videosAboveThreshold: o.videos_above_threshold ?? base.videosAboveThreshold,
     notableViewsThreshold: o.notable_views_threshold ?? base.notableViewsThreshold,
@@ -249,4 +271,24 @@ export async function getPortfolioShowcase(limit = 12): Promise<MetricsResult<Po
   });
 
   return { ...featured, data: [...featured.data, ...extras].slice(0, limit) };
+}
+
+/**
+ * Instagram follower demographics from the latest snapshot (written by the
+ * refresh job into `raw.audience`). Null when no snapshot carries them yet —
+ * the audience section then stays hidden rather than showing guesses.
+ */
+export async function getInstagramAudience(): Promise<{
+  audience: InstagramAudienceRaw | null;
+  asOf: string | null;
+}> {
+  try {
+    const snap = await getLatestSnapshot("instagram");
+    const audience = (snap?.raw?.audience ?? null) as InstagramAudienceRaw | null;
+    if (!snap || !audience) return { audience: null, asOf: null };
+    return { audience, asOf: snap.created_at };
+  } catch (e) {
+    console.error("[metrics] getInstagramAudience failed:", e);
+    return { audience: null, asOf: null };
+  }
 }

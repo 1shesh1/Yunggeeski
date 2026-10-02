@@ -20,6 +20,7 @@ export const FALLBACK_PLATFORMS: Platform[] = ["instagram"];
 
 export const FALLBACK_ACCOUNT_METRICS: AccountMetrics = {
   totalFollowers: 60_000,
+  followersByPlatform: { instagram: 60_000 },
   bestVideoViews: 7_400_000,
   videosAboveThreshold: 7,
   notableViewsThreshold: 4_000_000,

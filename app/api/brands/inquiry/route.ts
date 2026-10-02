@@ -33,25 +33,31 @@ export async function POST(request: NextRequest) {
     }
 
     const d = parsed.data;
-    const additionalInfo = d.additional_info?.trim() ? d.additional_info.trim() : null;
+    const additionalInfo = d.additional_info ?? null;
+    // Unanswered yes/no questions are stored as false (the columns are NOT NULL);
+    // the emails read the raw answer, so "not specified" is never shown as "No".
     const paidAds = d.paid_ads_required === "yes";
     const exclusivity = d.category_exclusivity_required === "yes";
 
     // Capture is decoupled from the global MOCK_MODE flag (which folds in unrelated
     // Stripe/Resend keys). Persist whenever Supabase is configured, regardless of
     // whether other integrations are; a missing Resend key must never drop a lead.
+    //
+    // The table predates the short form: the required collaboration description
+    // lands in campaign_objective, and skipped optional details are stored as ""
+    // so no schema change is needed.
     let persisted = false;
     if (getSupabase() !== null) {
       const saved = await insertBrandInquiry({
         name: d.name,
         company: d.company,
         work_email: d.work_email,
-        company_website: d.company_website,
-        product_or_service: d.product_or_service,
-        campaign_objective: d.campaign_objective,
-        budget: d.budget,
-        launch_date: d.launch_date,
-        deliverables: d.deliverables,
+        company_website: d.company_website ?? "",
+        product_or_service: d.product_or_service ?? "",
+        campaign_objective: d.collaboration,
+        budget: d.budget ?? "",
+        launch_date: d.launch_date ?? "",
+        deliverables: d.deliverables ?? "",
         paid_ads_required: paidAds,
         category_exclusivity_required: exclusivity,
         additional_info: additionalInfo,
@@ -70,15 +76,15 @@ export async function POST(request: NextRequest) {
       name: d.name,
       company: d.company,
       workEmail: d.work_email,
-      companyWebsite: d.company_website,
-      productOrService: d.product_or_service,
-      campaignObjective: d.campaign_objective,
-      budget: d.budget,
-      launchDate: d.launch_date,
-      deliverables: d.deliverables,
-      paidAdsRequired: paidAds,
-      categoryExclusivityRequired: exclusivity,
-      additionalInfo: additionalInfo,
+      collaboration: d.collaboration,
+      companyWebsite: d.company_website ?? null,
+      productOrService: d.product_or_service ?? null,
+      budget: d.budget ?? null,
+      launchDate: d.launch_date ?? null,
+      deliverables: d.deliverables ?? null,
+      paidAdsRequired: d.paid_ads_required ?? null,
+      categoryExclusivityRequired: d.category_exclusivity_required ?? null,
+      additionalInfo,
     };
     const [notified, confirmed] = await Promise.all([
       sendBrandInquiryEmail(payload),
@@ -89,7 +95,7 @@ export async function POST(request: NextRequest) {
       // No DB and no email configured — dev/mock with no keys. Log (no PII) and succeed.
       console.info("[brands/inquiry] no DB or email configured — inquiry not persisted:", {
         company: d.company,
-        budget: d.budget,
+        budget: d.budget ?? "not specified",
       });
     } else if (!notified.ok) {
       console.error("[brands/inquiry] notify failed (lead saved):", notified.error);

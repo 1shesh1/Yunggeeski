@@ -77,7 +77,8 @@ export default async function HomePage() {
       : null;
 
   const performanceMetrics: { label: string; value: string }[] = [
-    { label: "Total followers", value: `${formatCompact(m.totalFollowers)}+` },
+    // Named for the platforms behind it ("Instagram followers"), never "Total".
+    { label: `${platformLabel ?? "Total"} followers`, value: `${formatCompact(m.totalFollowers)}+` },
     { label: "Best-performing video", value: `${formatCompact(m.bestVideoViews)} views` },
     {
       label: `Videos above ${formatCompact(m.notableViewsThreshold)} views`,

@@ -21,6 +21,8 @@ import type { InstagramApiConfig } from "@/lib/env";
 import type { SocialTokenRow } from "@/lib/supabase";
 import {
   NOTABLE_VIEWS_THRESHOLD,
+  type DemographicCount,
+  type InstagramAudienceRaw,
   type PlatformFetchResult,
   type PlatformPost,
   type RefreshedToken,
@@ -147,6 +149,78 @@ async function fetchWindowReach(token: string, days: number): Promise<number | n
   }
 }
 
+type DemographicBreakdown = "age" | "gender" | "country" | "city";
+
+/**
+ * Best-effort follower demographics for one breakdown. Instagram returns one
+ * breakdown per call, and only for accounts with 100+ followers. Older API
+ * versions required a `timeframe`, so a rejected bare call is retried with one.
+ */
+async function fetchFollowerDemographics(
+  token: string,
+  breakdown: DemographicBreakdown,
+): Promise<DemographicCount[]> {
+  type Resp = {
+    data?: {
+      total_value?: {
+        breakdowns?: { results?: { dimension_values?: string[]; value?: number }[] }[];
+      };
+    }[];
+  };
+  const base: Record<string, string> = {
+    metric: "follower_demographics",
+    period: "lifetime",
+    metric_type: "total_value",
+    breakdown,
+    access_token: token,
+  };
+  const variants: Record<string, string>[] = [{}, { timeframe: "this_month" }];
+  for (const extra of variants) {
+    try {
+      const data = await igGet<Resp>("me/insights", { ...base, ...extra });
+      const results = data.data?.[0]?.total_value?.breakdowns?.[0]?.results ?? [];
+      return results
+        .map((r) => ({ key: r.dimension_values?.[0] ?? "", count: r.value ?? 0 }))
+        .filter((r) => r.key && r.count > 0);
+    } catch {
+      // fall through to the next variant
+    }
+  }
+  return [];
+}
+
+/** Total account views over the last `days` days (single total_value). */
+async function fetchWindowViews(token: string, days: number): Promise<number | null> {
+  const until = Math.floor(Date.now() / 1000);
+  const since = until - days * 86_400;
+  try {
+    const data = await igGet<{ data: { total_value?: { value?: number } }[] }>("me/insights", {
+      metric: "views",
+      period: "day",
+      metric_type: "total_value",
+      since: String(since),
+      until: String(until),
+      access_token: token,
+    });
+    const v = data.data?.[0]?.total_value?.value;
+    return typeof v === "number" && v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Follower demographics + 30-day views, fetched in parallel (one round trip of wall time). */
+async function fetchAudience(token: string): Promise<InstagramAudienceRaw> {
+  const [age, gender, country, city, views30d] = await Promise.all([
+    fetchFollowerDemographics(token, "age"),
+    fetchFollowerDemographics(token, "gender"),
+    fetchFollowerDemographics(token, "country"),
+    fetchFollowerDemographics(token, "city"),
+    fetchWindowViews(token, 30),
+  ]);
+  return { age, gender, country, city, views30d };
+}
+
 /** True when Instagram accepts the token (cheap `me?fields=id` probe). */
 async function tokenWorks(token: string): Promise<boolean> {
   try {
@@ -244,9 +318,10 @@ export async function fetchInstagramMetrics(
     };
   });
 
-  const [reach30d, reach90d] = await Promise.all([
+  const [reach30d, reach90d, audience] = await Promise.all([
     fetchWindowReach(token, 30),
     fetchWindowReach(token, 90),
+    fetchAudience(token),
   ]);
 
   const videoViews = posts.map((p) => p.views);
@@ -261,7 +336,7 @@ export async function fetchInstagramMetrics(
       bestVideoViews,
       videosAboveThreshold,
       notableViewsThreshold: NOTABLE_VIEWS_THRESHOLD,
-      raw: { account },
+      raw: { account, audience },
     },
     posts,
     token: refreshedToken,

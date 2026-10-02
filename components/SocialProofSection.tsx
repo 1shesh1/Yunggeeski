@@ -42,7 +42,7 @@ function RepostCard({ item }: { item: SocialProofRepost }) {
         {showImage ? (
           <>
             <Image
-              src={item.screenshot}
+              src={item.screenshot ?? ""}
               alt={item.alt}
               width={item.width}
               height={item.height}
@@ -119,7 +119,7 @@ function RepostCard({ item }: { item: SocialProofRepost }) {
               </DialogTitle>
             </DialogHeader>
             <Image
-              src={item.screenshot}
+              src={item.screenshot ?? ""}
               alt={item.alt}
               width={item.width}
               height={item.height}
@@ -158,7 +158,8 @@ export function SocialProofSection() {
         </p>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {SOCIAL_PROOF_REPOSTS.map((item) => (
+          {/* Entries without a capture yet (e.g. Facebook shares) are portfolio-only. */}
+          {SOCIAL_PROOF_REPOSTS.filter((item) => item.screenshot).map((item) => (
             <RepostCard key={item.id} item={item} />
           ))}
         </div>
