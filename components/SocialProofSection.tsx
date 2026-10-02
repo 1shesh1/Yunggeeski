@@ -158,8 +158,7 @@ export function SocialProofSection() {
         </p>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Entries without a capture yet (e.g. Facebook shares) are portfolio-only. */}
-          {SOCIAL_PROOF_REPOSTS.filter((item) => item.screenshot).map((item) => (
+          {SOCIAL_PROOF_REPOSTS.filter((item) => item.screenshot && item.coursePage !== false).map((item) => (
             <RepostCard key={item.id} item={item} />
           ))}
         </div>
