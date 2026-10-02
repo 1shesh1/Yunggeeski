@@ -26,10 +26,7 @@ export interface SocialProofRepost {
   action: string;
   /** Their own words, verbatim. Omit when they added no comment. */
   quote?: string;
-  /**
-   * Path under public/. Null until a capture exists — the card falls back to a
-   * placeholder (and the course page leaves the entry out).
-   */
+  /** Path under public/. Null until a capture exists — the card falls back to a placeholder. */
   screenshot: string | null;
   /**
    * Intrinsic pixel size of the screenshot. Per-entry rather than shared: the
@@ -40,6 +37,8 @@ export interface SocialProofRepost {
   width: number;
   height: number;
   alt: string;
+  /** Shown on the course page too. Portfolio-only entries set this false. */
+  coursePage?: boolean;
 }
 
 export const SOCIAL_PROOF_REPOSTS: SocialProofRepost[] = [
@@ -90,17 +89,18 @@ export const SOCIAL_PROOF_REPOSTS: SocialProofRepost[] = [
   {
     id: "nigel-green",
     name: "Nigel Green",
-    handle: "nigel.green.devere",
+    handle: "nigel.green",
     descriptor: "Founder & CEO, deVere Group",
     platformLabel: "Facebook",
     verified: true,
     permalink: "https://www.facebook.com/nigel.green.devere/videos/1260006368869644/",
     chartTitle: "Gold vs Inflation",
     action: "Shared the video, credited “via IG/yunggeeski_”",
-    screenshot: null,
-    width: 0,
-    height: 0,
-    alt: "Facebook video by Nigel Green sharing the Yung Geeski “Gold vs Inflation” chart, credited via IG/yunggeeski_",
+    screenshot: "/images/social-proof/nigel-green.png",
+    width: 720,
+    height: 900,
+    alt: "Facebook video by Nigel Green sharing the Yung Geeski “Gold vs Inflation” chart, captioned “Which one wins in the long run?”",
+    coursePage: false,
   },
 ];
 
